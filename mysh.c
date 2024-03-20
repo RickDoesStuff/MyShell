@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
 
 
         // check if that file is a tty or a batch file
-        if (isatty(fd) == 1) {
+        if (isatty(STDOUT_FILENO) == 1) {
             
             // it is a tty
             printf("running in interactive mode, given terminal path\n");
@@ -38,8 +38,8 @@ int main(int argc, char **argv) {
         } else {
             // is not a tty
             printf("running in batch mode\n");
-        
             interactive = 0;
+            
         }
     } else {
         // no path given, running in current terminal?
