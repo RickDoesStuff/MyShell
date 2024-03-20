@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
-//#include <dirent.h>
+#include <dirent.h>
 #include <unistd.h>
 
 int interactiveMode(char *path);
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
             // is not a tty
             printf("running in batch mode\n");
             interactive = 0;
-            
+
         }
     } else {
         // no path given, running in current terminal?
@@ -77,6 +77,8 @@ int interactiveMode(char *path) {
         userMessage[strcspn(userMessage, "\n")] = '\0';
         printf("read:%s\n",userMessage);
         if(strcmp(userMessage, "exit") == 0) {
+            
+            printf("exiting");
             isRunning = 0;
             break;
         }
@@ -86,13 +88,18 @@ int interactiveMode(char *path) {
         // use the cmd in the terminal
 
         //int execl(const char *path, const char *arg, ...);
-        if (execl("/usr/bin/env", "env", "pwd", NULL) == -1) {
-            if (system(userMessage) == -1) {
-                perror("system call failed");
+
+        printf("Searching...\n");
+        if (execl(strcat("/usr/local/bin/",userMessage), userMessage, NULL) == -1) {
+            printf("Not in /usr/local/bin/\n");
+            if (execl(strcat("/usr/bin/",userMessage), userMessage, NULL) == -1) {
+            printf("Not in /usr/bin/\n");
+                if (execl(strcat("/bin/",userMessage), userMessage, NULL) == -1) {
+                    perror("system call failed");
+                }
             }
         }
     }
-
 
 
 
