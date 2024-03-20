@@ -18,7 +18,8 @@ int main(int argc, char **argv) {
         
         printf("arg found:%s\n",argv[1]);
         path = (char *)(argv[1]);
-        printf("1\n");
+
+        // open file given
         int fd = open(path,O_RDONLY);
 
 
@@ -30,15 +31,14 @@ int main(int argc, char **argv) {
             
             // it is a tty
             printf("running in interactive mode, given terminal path\n");
-            
+
             // here I may need to change the output from the current terminal to the terminal I was given
             if (dup2(fd, STDOUT_FILENO) < 0) {perror("Failed to dup");}
 
         } else {
             // is not a tty
             printf("running in batch mode\n");
-            
-            printf("5\n");
+        
             interactive = 0;
         }
     } else {
