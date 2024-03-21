@@ -21,8 +21,8 @@ mysh: $(TARGET_MYSH)
 	make clean
 
 # Debug rule to build the program mysh with debug flags
-debug_mysh: CFLAGS = $(DFLAGS)
-debug_mysh: $(TARGET_MYSH)
+debug: CFLAGS = $(DFLAGS)
+debug: $(TARGET_MYSH)
 	make clean
 
 # Rule for linking the program
@@ -39,7 +39,7 @@ $(TARGET_MYSH): $(OBJECTS_MYSH)
 
 # Rule for cleaning up
 clean:
-	del -f $(OBJECTS_MYSH)
+	rm -f $(OBJECTS_MYSH)
 
 # Dependencies
 #filestream.o: filestream.c filestream.h
