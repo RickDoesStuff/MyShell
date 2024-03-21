@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
-#include <dirent.h>
 #include <unistd.h>
+//#include <dirent.h>
 
 int interactiveMode(char *path);
 
@@ -63,7 +63,7 @@ int interactiveMode(char *path) {
     printf("\n\nWelcome to mysh\n\n");
 
     int isRunning = 1;
-    char *userMessage = malloc(sizeof(char*) * 256);
+    char *userMessage = malloc(sizeof(char) * 256);
     while (isRunning) {
         printf("mysh> ");
 
@@ -88,15 +88,18 @@ int interactiveMode(char *path) {
         // use the cmd in the terminal
 
         //int execl(const char *path, const char *arg, ...);
+        char *bins[] = {"/usr/local/bin/","/usr/bin/","/bin/"};
+        
+        for (int i=0;i<sizeof(bins)/sizeof(bins[0]); i++)
+        {
+            int bufSize = strlen(userMessage) + strlen(bins[i]);
+            char *buf = malloc((char)bufSize);
+            snprintf(buf,bufSize,"%s%s",bins[i],userMessage);
 
-        printf("Searching...\n");
-        if (execl(strcat("/usr/local/bin/",userMessage), userMessage, NULL) == -1) {
-            printf("Not in /usr/local/bin/\n");
-            if (execl(strcat("/usr/bin/",userMessage), userMessage, NULL) == -1) {
-            printf("Not in /usr/bin/\n");
-                if (execl(strcat("/bin/",userMessage), userMessage, NULL) == -1) {
-                    perror("system call failed");
-                }
+            printf("Searching:%s\n",buf);
+            if (execl(buf, userMessage, NULL) == -1) {
+                printf("Failed to execl:%s\n",buf);
+                perror("execl error:");
             }
         }
     }

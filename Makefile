@@ -11,7 +11,7 @@ DFLAGS=-Wall -g -D__DEBUG
 TARGET_MYSH=mysh
 
 # List of source files for mysh
-SOURCES_MYSH= mysh.c #binaryTree.c TestFile.c
+SOURCES_MYSH= mysh.c linestream.c terminalstream.c
 
 # Object files to generate for mysh
 OBJECTS_MYSH=$(SOURCES_MYSH:.c=.o)
@@ -43,7 +43,7 @@ clean:
 
 # Dependencies
 #filestream.o: filestream.c filestream.h
-#linestream.o: linestream.c linestream.h
+linestream.o: linestream.c linestream.h
 #dictSearch.o: dictSearch.c dictSearch.h
-#binaryTree.o: binaryTree.c binaryTree.h
+terminalstream.o: terminalstream.c terminalstream.h
 mysh.o: mysh.c mysh.h # Add this line if mysh.h exists and is used

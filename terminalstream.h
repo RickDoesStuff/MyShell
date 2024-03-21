@@ -1,0 +1,3 @@
+#ifndef _TERMINALSTREAM_H
+#define _TERMINALSTREAM_H
+#endif

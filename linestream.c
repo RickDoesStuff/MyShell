@@ -1,1 +1,2 @@
-// for reading in from a terminal, given or current
+// for reading in from a file for batch commands
+#include "linestream.h"
