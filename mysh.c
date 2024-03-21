@@ -1,9 +1,5 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <string.h>
-#include <unistd.h>
-//#include <dirent.h>
+#include "terminalstream.h"
+#include "mysh.h"
 
 int interactiveMode(char *path);
 
@@ -11,12 +7,12 @@ int main(int argc, char **argv) {
     int interactive = 1; // set interactive mode true by default
     char *path = NULL;
 
-    printf("argc:%i\n",argc);
+    DEBUG printf("argc:%i\n",argc);
 
     // check if a 2nd arg (file path) is given
     if (argc >= 2) {
         
-        printf("arg found:%s\n",argv[1]);
+        DEBUG printf("arg found:%s\n",argv[1]);
         path = (char *)(argv[1]);
 
         // open file given
@@ -30,20 +26,20 @@ int main(int argc, char **argv) {
         if (isatty(STDOUT_FILENO) == 1) {
             
             // it is a tty
-            printf("running in interactive mode, given terminal path\n");
+            DEBUG printf("running in interactive mode, given terminal path\n");
 
             // here I may need to change the output from the current terminal to the terminal I was given
-            if (dup2(fd, STDOUT_FILENO) < 0) {perror("Failed to dup");}
+            //if (dup2(fd, STDOUT_FILENO) < 0) {perror("Failed to dup");}
 
         } else {
             // is not a tty
-            printf("running in batch mode\n");
+            DEBUG printf("running in batch mode\n");
             interactive = 0;
 
         }
     } else {
         // no path given, running in current terminal?
-        printf("running in interactive mode, no path given\n");
+        DEBUG printf("running in interactive mode, no path given\n");
     }
 
     // if its being run in interactive mode
@@ -61,51 +57,80 @@ int main(int argc, char **argv) {
 int interactiveMode(char *path) {
 
     printf("\n\nWelcome to mysh\n\n");
+    
+    int isRunning = 1;        
 
-    int isRunning = 1;
-    char *userMessage = malloc(sizeof(char) * 256);
-    while (isRunning) {
+    while (isRunning) 
+    {
+        int arrSize = 10;
+        char **arr=NULL;
+        int wordCount = 0;
+
         printf("mysh> ");
-
-        if (!fgets(userMessage, 256, stdin)) {
-            printf("Error reading input or EOF\n");
-            isRunning = 0;
-            break; // Exit the loop on EOF or error
+        // read in from the terminal
+        int termError = terminalStream(&arrSize,&arr,&wordCount);
+        if(termError <= 0) {
+            printf("Terminal Stream Error: %i\n",termError);
+            free(arr);
+            exit(EXIT_FAILURE);
+        }
+        if (arr==NULL) {
+            printf("arr is null\n");
+            free(arr);
+            exit(EXIT_FAILURE);
         }
 
-        // Remove newline character if present
-        userMessage[strcspn(userMessage, "\n")] = '\0';
-        printf("read:%s\n",userMessage);
-        if(strcmp(userMessage, "exit") == 0) {
-            
-            printf("exiting");
-            isRunning = 0;
+        if (strcmp(arr[0],"exit") == 0) {
+            printf("exit typed\n");
             break;
         }
-
-
 
         // use the cmd in the terminal
 
         //int execl(const char *path, const char *arg, ...);
         char *bins[] = {"/usr/local/bin/","/usr/bin/","/bin/"};
-        
-        for (int i=0;i<sizeof(bins)/sizeof(bins[0]); i++)
-        {
-            int bufSize = strlen(userMessage) + strlen(bins[i]);
-            char *buf = malloc((char)bufSize);
-            snprintf(buf,bufSize,"%s%s",bins[i],userMessage);
+    
+        int childpid;
+        int status;
+        if ((childpid = fork()) == -1) {
+            // fork failed
+            perror("Can't fork:");
+            exit(EXIT_FAILURE);
+        } else if (childpid == 0) {
+            // only in child
+            for (int i=0;i<sizeof(bins)/sizeof(bins[0]); i++)
+            {
+                int bufSize = strlen(arr[0]) + strlen(bins[i]) + 1;
 
-            printf("Searching:%s\n",buf);
-            if (execl(buf, userMessage, NULL) == -1) {
-                printf("Failed to execl:%s\n",buf);
-                perror("execl error:");
+                char *buf = malloc((char)bufSize);
+                if (buf == NULL) {perror("Buf wasn't allocated"); exit(EXIT_FAILURE);}
+
+
+                snprintf(buf,bufSize,"%s%s",bins[i],arr[0]);
+
+                DEBUG printf("\nSearching:%s\n",buf);
+
+                if (execv(buf, arr) != -1) {
+                    exit(EXIT_SUCCESS);
+                }
             }
+            
+            perror("execv error:");
+            exit(EXIT_FAILURE);
         }
+        // only in parrent
+        if (wait(&status) == -1){
+            perror("Error waiting for child:");
+            exit(EXIT_FAILURE);
+        }
+        //
+        if(!WIFEXITED(status) && WEXITSTATUS(status) != 0){
+            printf("error with child process:");
+            perror("::");
+            exit(EXIT_FAILURE);
+        }
+        free(arr); // free the arr obj to prevent memory leaks
     }
-
-
-
 
     printf("mysh: exiting");
     return 0;
