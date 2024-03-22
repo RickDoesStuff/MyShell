@@ -62,28 +62,50 @@ int interactiveMode(char *path) {
 
     while (isRunning) 
     {
-        int arrSize = 10;
-        char **arr=NULL;
-        int wordCount = 0;
+        int cmdCount = 0;
+        char ***arr=NULL;
 
         printf("mysh> ");
+        fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
+
         // read in from the terminal
-        int termError = terminalStream(&arrSize,&arr,&wordCount);
-        if(termError <= 0) {
+        int termError = terminalStream(&arr,&cmdCount);
+        if(termError < 0) {
             printf("Terminal Stream Error: %i\n",termError);
             free(arr);
             exit(EXIT_FAILURE);
+        } // returned with nothing, (user didn't type anything, just hit enter)
+        else if (termError == 0) {
+            // jump back to getting user input
+            continue;
         }
+
+        // if the arr is somehow null
         if (arr==NULL) {
             printf("arr is null\n");
-            free(arr);
             exit(EXIT_FAILURE);
         }
 
-        if (strcmp(arr[0],"exit") == 0) {
-            printf("exit typed\n");
+        if (strcmp(arr[0][0],"exit") == 0) {
+            DEBUG printf("exit typed\n");
             break;
         }
+
+
+
+        // Assuming cmdCount is the total number of commands (including pipes, if, then, else if any)
+
+        for (int i = 0; i < cmdCount; i++) {
+            printf("[ ");
+            int j = 0;
+            //[[ls,-l,NULL],[echo hello]]
+            while ((arr)[i][j] != NULL) { // Assuming NULL as the sentinel at the end of each command's word array
+                printf("[\"%s\"] ",(arr)[i][j]); // Free each word in the array
+                j++;
+            }
+            printf("]\n");
+        }
+
 
         // use the cmd in the terminal
 
@@ -100,17 +122,17 @@ int interactiveMode(char *path) {
             // only in child
             for (int i=0;i<sizeof(bins)/sizeof(bins[0]); i++)
             {
-                int bufSize = strlen(arr[0]) + strlen(bins[i]) + 1;
+                int bufSize = strlen(arr[0][0]) + strlen(bins[i]) + 1;
 
                 char *buf = malloc((char)bufSize);
                 if (buf == NULL) {perror("Buf wasn't allocated"); exit(EXIT_FAILURE);}
 
 
-                snprintf(buf,bufSize,"%s%s",bins[i],arr[0]);
+                snprintf(buf,bufSize,"%s%s",bins[i],arr[0][0]);
 
                 DEBUG printf("\nSearching:%s\n",buf);
 
-                if (execv(buf, arr) != -1) {
+                if (execv(buf, arr[0]) != -1) {
                     exit(EXIT_SUCCESS);
                 }
             }
@@ -129,9 +151,20 @@ int interactiveMode(char *path) {
             perror("::");
             exit(EXIT_FAILURE);
         }
-        free(arr); // free the arr obj to prevent memory leaks
-    }
 
-    printf("mysh: exiting");
+        // Assuming cmdCount is the total number of commands (including pipes, if, then, else if any)
+        for (int i = 0; i < cmdCount; i++) {
+            int j = 0;
+            //[[ls,-l,NULL],[echo hello]]
+            while ((arr)[i][j] != NULL) { // Assuming NULL as the sentinel at the end of each command's word array
+                free((arr)[i][j]); // Free each word in the array
+                j++;
+            }
+            free((arr)[i]); // Free the array of words for each command
+        }
+        free(arr); // Finally, free the command array
+    }
+    
+    printf("mysh: exiting\n");
     return 0;
 }
