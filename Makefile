@@ -2,10 +2,10 @@
 CC=gcc
 
 # Compiler flags
-CFLAGS=-Wall -g 
+CFLAGS=-Wall -g -fsanitize=address
 
 # Debugging flags
-DFLAGS=-Wall -g -D__DEBUG
+DFLAGS=-Wall -g -fsanitize=address -D__DEBUG 
 
 # Define the target executable name
 TARGET_MYSH=mysh

@@ -56,6 +56,12 @@ int main(int argc, char **argv) {
 */
 int interactiveMode(char *path) {
 
+    int pipeFD = open("./pipeFD", O_CREAT, O_CREAT, O_RDWR, 0777);
+    if (pipeFD==-1){
+        perror("open error:");
+        exit(EXIT_FAILURE);
+    }
+
     printf("\n\nWelcome to mysh\n\n");
     
     int isRunning = 1;        
@@ -63,13 +69,14 @@ int interactiveMode(char *path) {
     while (isRunning) 
     {
         int cmdCount = 0;
+        int allocatedCmdCount = 3;
         char ***arr=NULL;
 
-        printf("mysh> ");
+        printf("\nmysh> ");
         fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
 
         // read in from the terminal
-        int termError = terminalStream(&arr,&cmdCount);
+        int termError = terminalStream(&arr,&cmdCount, &allocatedCmdCount);
         if(termError == -1) {
             printf("Terminal Stream Error\n");
             exit(EXIT_FAILURE);
@@ -99,12 +106,11 @@ int interactiveMode(char *path) {
 
 
         // Assuming cmdCount is the total number of commands (including pipes, if, then, else if any)
-
         for (int i = 0; i < cmdCount; i++) {
             printf("[ ");
             int j = 0;
             //[[ls,-l,NULL],[echo hello]]
-            while ((arr)[i][j] != NULL) { // Assuming NULL as the sentinel at the end of each command's word array
+            while ((arr)[i][j] != NULL && strcmp((arr)[i][j], "") != 0) { // Assuming NULL as the sentinel at the end of each command's word array
                 printf("[\"%s\"] ",(arr)[i][j]); // Free each word in the array
                 j++;
             }
@@ -113,50 +119,84 @@ int interactiveMode(char *path) {
 
 
         // use the cmd in the terminal
+        for (int cmdIndex = 0; cmdIndex < cmdCount; cmdIndex++) {
+        // first need to check if the cmd is a cmd or a pipe, if, then, or else
 
-        //int execl(const char *path, const char *arg, ...);
-        char *bins[] = {"/usr/local/bin/","/usr/bin/","/bin/"};
-    
-        int childpid;
-        int status;
-        if ((childpid = fork()) == -1) {
-            // fork failed
-            perror("Can't fork:");
-            exit(EXIT_FAILURE);
-        } else if (childpid == 0) {
-            // only in child
-            for (int i=0;i<sizeof(bins)/sizeof(bins[0]); i++)
-            {
-                int bufSize = strlen(arr[0][0]) + strlen(bins[i]) + 1;
-
-                char *buf = malloc((char)bufSize);
-                if (buf == NULL) {perror("Buf wasn't allocated"); exit(EXIT_FAILURE);}
-
-
-                snprintf(buf,bufSize,"%s%s",bins[i],arr[0][0]);
-
-                DEBUG printf("\nSearching:%s\n",buf);
-
-                if (execv(buf, arr[0]) != -1) {
-                    exit(EXIT_SUCCESS);
+            // check if the next cmd is a pipe, if it is, set current output to a file
+            if (cmdIndex+1 < cmdCount && strcmp(arr[cmdIndex+1][0], "|") == 0) {
+                int pipeFDS[2] = {STDIN_FILENO,pipeFD};
+                if(pipe(pipeFDS) != 0)
+                {
+                    perror("pipe error:");
+                    freeArr(&arr, &cmdCount);
+                    exit(EXIT_FAILURE);
                 }
+                printf("output set\n");
             }
-            
-            perror("execv error:");
-            exit(EXIT_FAILURE);
-        }
-        // only in parrent
-        if (wait(&status) == -1){
-            perror("Error waiting for child:");
-            exit(EXIT_FAILURE);
-        }
-        //
-        if(!WIFEXITED(status) && WEXITSTATUS(status) != 0){
-            printf("error with child process:");
-            perror("::");
-            exit(EXIT_FAILURE);
-        }
+            // current cmd is pipe, if it is, set the next cmds input to the file the prev command wrote to
+            if(cmdIndex+1 < cmdCount && strcmp(arr[cmdIndex+1][0], "|") == 0)
+            {
+                int pipeFDS[2] = {pipeFD,STDIN_FILENO};
+                if(pipe(pipeFDS) != 0)
+                {
+                    perror("pipe error:");
+                    freeArr(&arr, &cmdCount);
+                    exit(EXIT_FAILURE);
+                }
+                printf("input set\n");
+            }
 
+            //int execl(const char *path, const char *arg, ...);
+            char *bins[] = {"/usr/local/bin/","/usr/bin/","/bin/",""};// searches bins before searching working dir
+            int binCount = 4;
+            int childpid;
+            int status;
+            if ((childpid = fork()) == -1) {
+                // fork failed
+                perror("Can't fork:");
+                exit(EXIT_FAILURE);
+            } else if (childpid == 0) {
+                // only in child
+
+                // search through each given bin in *bins[]
+                for (int binIndex = 0; binIndex < binCount; binIndex++)
+                {            
+                    int bufSize = strlen(arr[0][0]) + strlen(bins[binIndex]) + 1;
+                    char *buf = malloc((char)bufSize);
+
+                    if (buf == NULL) {perror("Buf wasn't allocated"); exit(EXIT_FAILURE);}
+
+                    snprintf(buf,bufSize,"%s%s",bins[binIndex],arr[cmdIndex][0]);// add the current commands first word to the end of the path to search
+
+                    DEBUG printf("\nSearching:%s\n",buf);
+
+                    if (execv(buf, arr[cmdIndex]) != -1) {
+                        free(buf);
+                        exit(EXIT_SUCCESS);
+                    }
+
+                    // free buf
+                    if (buf != NULL) {
+                        free(buf);
+                    }
+                }
+
+                
+                perror("execv error:");
+                exit(EXIT_FAILURE);
+            }
+            // only in parrent
+            if (wait(&status) == -1){
+                perror("Error waiting for child:");
+                exit(EXIT_FAILURE);
+            }
+            //
+            if(!WIFEXITED(status) && WEXITSTATUS(status) != 0){
+                printf("error with child process:");
+                perror("::");
+                exit(EXIT_FAILURE);
+            }
+        }
         // Assuming cmdCount is the total number of commands (including pipes, if, then, else if any)
         freeArr(&arr, &cmdCount);
     }

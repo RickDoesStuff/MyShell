@@ -10,16 +10,18 @@
  * arr, pointer to 3d char array, cmd index, word index, char index
  * cmdCount, pointer to a int that will be set to the amount of cmds in the array (incuding pipes, if, then, else)
 */
-int terminalStream(char ****arr, int *cmdCount) {
-    int cmdAmt = 3; // default size for amount of commands in the array//+2;5+4;9+8 //cmdAmt+=cmdAmt-1
+int terminalStream(char ****arr, int *cmdCount, int *alloctedCmdAmt) {
+    *alloctedCmdAmt = 3; // default size for amount of commands in the array//+2;5+4;9+8 //cmdAmt+=cmdAmt-1
     int wordAmt = 5; // default size for the amount of words in a command line
     
     // allocate cmdArray
-    *arr = malloc(cmdAmt * sizeof(char*));
+    *arr = malloc(*alloctedCmdAmt * sizeof(char*));
     if (*arr == NULL) {perror("Couldn't allocate cmd array"); return -1;}
 
-    for (int i = 0; i < cmdAmt; i++) {
+    for (int i = 0; i < *alloctedCmdAmt; i++) {
         (*arr)[i] = malloc(wordAmt * sizeof(char*));
+        if ((*arr)[i] == NULL) {perror("Couldn't allocate word array"); return -1;}
+        
         for (int j = 0; j < wordAmt; j++) {
             (*arr)[i][j] = NULL; // Initialize each cmd array to NULL
         }
@@ -52,7 +54,7 @@ int terminalStream(char ****arr, int *cmdCount) {
                 if (currentWord >= wordAmt - 1) { 
                     wordAmt *= 2; // double the size of the array
                     (*arr)[currentCmd] = realloc((*arr)[currentCmd], wordAmt * sizeof(char*));
-                    if ((*arr)[currentCmd] == NULL) { perror("Couldn't reallocate array of words"); return -1; }
+                    if ((*arr)[currentCmd] == NULL) { perror("Couldn't reallocate array of words"); free(buf); return -1; }
 
                     // Initialize new pointers to NULL
                     for (int i = currentWord + 1; i < wordAmt; i++) {
@@ -66,24 +68,26 @@ int terminalStream(char ****arr, int *cmdCount) {
                 // ensure current word is allocated
                 if (((*arr)[currentCmd])[currentWord] == NULL) {
                     ((*arr)[currentCmd])[currentWord] = malloc(sizeof(char) * currentWordSize);
-                    if ((*arr)[currentCmd][currentWord] == NULL) { perror("Couldn't allocate word"); return -1; }
+                    if ((*arr)[currentCmd][currentWord] == NULL) { perror("Couldn't allocate word"); free(buf); return -1; }
                 }
                 // save room for string terminator 
                 else if (wordLen + 1 >= currentWordSize) {
                     currentWordSize+=currentWordSize;
                     (*arr)[currentCmd][currentWord] = realloc((*arr[currentCmd])[currentWord], currentWordSize);
-                    if ((*arr)[currentCmd][currentWord] == NULL) { perror("Couldn't reallocate word"); return -1; }
+                    if ((*arr)[currentCmd][currentWord] == NULL) { perror("Couldn't reallocate word"); free(buf); return -1; }
                 }
 
                 // check if current char is a newline char 
-                if (chr == '\n') {
-
+                if (chr == '\n' && (wordLen > 0 || currentWord > 0)) {
+                    DEBUG printf("**returning\n");
                     (*arr)[currentCmd][currentWord][wordLen] = '\0'; // Null-terminate
                     currentWord++;
                     // maybe realloc the size of the arr if we run out of index's to use
                     (*arr)[currentCmd][currentWord] = NULL;    // put NULL as the last index in the 2d array
                     wordAmt = currentWord+1;
                     *cmdCount = currentCmd+1;
+
+                    free(buf);
                     return 1; // return with success
                 } 
 
@@ -121,9 +125,10 @@ int terminalStream(char ****arr, int *cmdCount) {
                         if (currentWord == 0){
                             // printf("bash: syntax error\n");
                             (*arr)[0][0] = "|";
+                            free(buf);
                             return -2;
                         }
-                        (*arr)[currentCmd][currentWord] = NULL; // delete start of prev word, only god knows where it is
+                        (*arr)[currentCmd][currentWord] = NULL; // delete start of prev word, only god knows where it starts
                     } // echo hello | echo hi
 
                     printf("Current word:%i\n",currentWord);
@@ -148,16 +153,17 @@ int terminalStream(char ****arr, int *cmdCount) {
                     (*arr)[currentCmd][currentWord][wordLen + 1] = '\0'; // Null-terminate
                     wordLen++;
                     //printf("wordLen:%i\n",wordLen);
-
+                    // echo hi | echo hello
                 }
             }
         } else {
             // no bytes to read
             //printf("no bytes to read\n");
             // hit enter before data was read
+            free(buf);
             return 0;
         }
     }
-
+    free(buf);
     return 0; // didn't return or crash, it failed
 }
