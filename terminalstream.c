@@ -63,7 +63,6 @@ int terminalStream(char ****arr, int *cmdCount) {
                 char chr = buf[currentPos]; // get the current char we are checking
                 //printf("[currCmd:%i][currWord:%i][wordLen:%i][Char:\'%c\']\n", currentCmd, currentWord,wordLen,chr);
                 
-
                 // ensure current word is allocated
                 if (((*arr)[currentCmd])[currentWord] == NULL) {
                     ((*arr)[currentCmd])[currentWord] = malloc(sizeof(char) * currentWordSize);
@@ -75,7 +74,6 @@ int terminalStream(char ****arr, int *cmdCount) {
                     (*arr)[currentCmd][currentWord] = realloc((*arr[currentCmd])[currentWord], currentWordSize);
                     if ((*arr)[currentCmd][currentWord] == NULL) { perror("Couldn't reallocate word"); return -1; }
                 }
-
 
                 // check if current char is a newline char 
                 if (chr == '\n') {
@@ -119,11 +117,17 @@ int terminalStream(char ****arr, int *cmdCount) {
                         currentWordSize = 8;
                     } else {
                         printf("pipe is own word\n");
+                        // check if its the first word in the command
+                        if (currentWord == 0){
+                            // printf("bash: syntax error\n");
+                            (*arr)[0][0] = "|";
+                            return -2;
+                        }
                         (*arr)[currentCmd][currentWord] = NULL; // delete start of prev word, only god knows where it is
-                    }
+                    } // echo hello | echo hi
+
                     printf("Current word:%i\n",currentWord);
                     
-                
                     currentCmd++;
                     // ./mych text.exe | helper.exe -> text.exe,|,....
                     // "| helper.exe"
@@ -140,10 +144,10 @@ int terminalStream(char ****arr, int *cmdCount) {
                 }else{
                     // not a |, space, or new line
 
-                        (*arr)[currentCmd][currentWord][wordLen] = chr; // Append character
-                        (*arr)[currentCmd][currentWord][wordLen + 1] = '\0'; // Null-terminate
-                        wordLen++;
-                        //printf("wordLen:%i\n",wordLen);
+                    (*arr)[currentCmd][currentWord][wordLen] = chr; // Append character
+                    (*arr)[currentCmd][currentWord][wordLen + 1] = '\0'; // Null-terminate
+                    wordLen++;
+                    //printf("wordLen:%i\n",wordLen);
 
                 }
             }

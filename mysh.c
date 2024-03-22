@@ -70,11 +70,16 @@ int interactiveMode(char *path) {
 
         // read in from the terminal
         int termError = terminalStream(&arr,&cmdCount);
-        if(termError < 0) {
-            printf("Terminal Stream Error: %i\n",termError);
-            free(arr);
+        if(termError == -1) {
+            printf("Terminal Stream Error\n");
             exit(EXIT_FAILURE);
-        } // returned with nothing, (user didn't type anything, just hit enter)
+        } 
+        else if(termError == -2) {
+            printf("bash: syntax error: %s\n",arr[0][0]);
+            freeArr(&arr, &cmdCount);
+            continue;
+        }
+        // returned with nothing, (user didn't type anything, just hit enter)
         else if (termError == 0) {
             // jump back to getting user input
             continue;
@@ -153,18 +158,26 @@ int interactiveMode(char *path) {
         }
 
         // Assuming cmdCount is the total number of commands (including pipes, if, then, else if any)
-        for (int i = 0; i < cmdCount; i++) {
-            int j = 0;
-            //[[ls,-l,NULL],[echo hello]]
-            while ((arr)[i][j] != NULL) { // Assuming NULL as the sentinel at the end of each command's word array
-                free((arr)[i][j]); // Free each word in the array
-                j++;
-            }
-            free((arr)[i]); // Free the array of words for each command
-        }
-        free(arr); // Finally, free the command array
+        freeArr(&arr, &cmdCount);
     }
     
     printf("mysh: exiting\n");
     return 0;
+}
+
+int freeArr(char ****arr, int *cmdCount) {
+    if (arr == NULL || *arr == NULL) return 0; // Nothing to free
+    for (int i = 0; i < *cmdCount; i++) {
+        int j = 0;
+        while ((*arr)[i][j] != NULL) {
+            free((*arr)[i][j]);
+            (*arr)[i][j] = NULL; // Prevent dangling pointer
+            j++;
+        }
+        free((*arr)[i]);
+        (*arr)[i] = NULL; // Again, prevent dangling pointer
+    }
+    free(*arr);
+    *arr = NULL; // Prevent dangling pointer at the top level
+    return 1; // Success
 }
