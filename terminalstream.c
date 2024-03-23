@@ -18,10 +18,12 @@ int terminalStream(char ****arr, int *cmdCount, int *alloctedCmdAmt) {
     *arr = malloc(*alloctedCmdAmt * sizeof(char*));
     if (*arr == NULL) {perror("Couldn't allocate cmd array"); return -1;}
 
+    // allocate each cmd in the array
     for (int i = 0; i < *alloctedCmdAmt; i++) {
         (*arr)[i] = malloc(wordAmt * sizeof(char*));
         if ((*arr)[i] == NULL) {perror("Couldn't allocate word array"); return -1;}
         
+        // allocate each word in the array
         for (int j = 0; j < wordAmt; j++) {
             (*arr)[i][j] = NULL; // Initialize each cmd array to NULL
         }
