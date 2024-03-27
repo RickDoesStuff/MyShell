@@ -69,14 +69,13 @@ int interactiveMode(char *path) {
     while (isRunning) 
     {
         int cmdCount = 0;
-        int allocatedCmdCount = 3;
         char ***arr=NULL;
 
         printf("\nmysh> ");
         fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
 
         // read in from the terminal
-        int termError = terminalStream(&arr,&cmdCount, &allocatedCmdCount);
+        int termError = terminalStream(&arr,&cmdCount);
         if(termError == -1) {
             printf("Terminal Stream Error\n");
             exit(EXIT_FAILURE);
@@ -97,9 +96,20 @@ int interactiveMode(char *path) {
             printf("arr is null\n");
             exit(EXIT_FAILURE);
         }
-
+        // if the arr is somehow null
+        if (arr[0]==NULL) {
+            printf("arr[0] is null\n");
+            exit(EXIT_FAILURE);
+        }
+        // if the arr is somehow null
+        if (arr[0][0]==NULL) {
+            printf("arr[0][0] is null\n");
+            exit(EXIT_FAILURE);
+        }
+        
         if (strcmp(arr[0][0],"exit") == 0) {
             DEBUG printf("exit typed\n");
+            freeArr(&arr, &cmdCount);
             break;
         }
 
@@ -200,7 +210,7 @@ int interactiveMode(char *path) {
         // Assuming cmdCount is the total number of commands (including pipes, if, then, else if any)
         freeArr(&arr, &cmdCount);
     }
-    
+
     printf("mysh: exiting\n");
     return 0;
 }
