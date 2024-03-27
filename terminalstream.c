@@ -14,10 +14,10 @@ int terminalStream(char ****arr, int *cmdIndex) {
     
     char **wordArr=NULL; // word array returned from readWordsIntoArray function
     int totalWordCount=0; // total word count from readWordsIntoArray function
-    int retError;
+    int retError=0;
 
     // if not success, return error
-    if ((retError = readWordsIntoArray(&wordArr, &totalWordCount)) != 1){
+    if ((retError = readWordsIntoArray(&wordArr, &totalWordCount)) != 1) {
         printf("readWordsIntoArray error: %i\n",retError);
         return -1;
     }
@@ -44,11 +44,10 @@ int terminalStream(char ****arr, int *cmdIndex) {
             (*arr)[i][j] = NULL; // Initialize each cmd array to NULL
         }
     }
-    printf("[");
 
     // itterate through each word in the array
     for (int indexWordArr = 0; indexWordArr<totalWordCount; indexWordArr++) {
-        printf("\"%s\",\n",wordArr[indexWordArr]);
+        printf("word: \"%s\",\n",wordArr[indexWordArr]);
 
         // if pipe
         if (strcmp(wordArr[indexWordArr],"|") == 0 ||
@@ -232,6 +231,8 @@ int readWordsIntoArray(char ***arr, int *wordCount){
 
                     free(buf);
 
+                    // free the end of the array, basically incase there is anything after the stuff we actually need, 
+                    // such as random byte data
                     if ((*arr)==NULL || arr==NULL)
                     {
                         printf("arr error\n");
