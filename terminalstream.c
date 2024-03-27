@@ -140,10 +140,11 @@ int terminalStream(char ****arr, int *cmdIndex) {
     }
 
     // causes issue when freeing here!
-    // for (int i = 0; wordArr[i]!=NULL; i++) {
-    //     free(wordArr[i]);
-    // }
-    // free(wordArr);
+    for (int i = 0; wordArr[i]!=NULL; i++) {
+
+        wordArr[i]=NULL;
+    }
+    free(wordArr);
 
     printf("freed\n");
 
@@ -231,23 +232,18 @@ int readWordsIntoArray(char ***arr, int *wordCount){
 
                     free(buf);
 
-                    // if ((*arr)==NULL || arr==NULL)
-                    // {
-                    //     printf("arr error\n");
-                    // }
-                    // else{
-                    //     for (int freeI = *wordCount; freeI<wordAmt; freeI++)
-                    //     {
-                    //         if (arr[freeI] == NULL)
-                    //         {}else
-                    //         {
-                    //             free(arr[freeI]);
-                    //         }
-                    //     }
-                    // }
-                    printf("freed arr\n");
+                    if ((*arr)==NULL || arr==NULL)
+                    {
+                        printf("arr error\n");
+                        return -1;
+                    }
+                    for (int freeI = *wordCount; freeI<wordAmt; freeI++)
+                    {
+                        if ((*arr)[freeI] == NULL) {break;}
+                        free((*arr)[freeI]);
+                    }
 
-
+                    printf("freed end of wordArr\n");
                     return 1; // return with success
                 } 
 
