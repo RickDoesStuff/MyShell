@@ -185,7 +185,7 @@ int interactiveMode(char *path) {
 
                 // go to next command
 
-                continue;
+                //continue;
             }
 
             //int execl(const char *path, const char *arg, ...);
@@ -214,6 +214,9 @@ int interactiveMode(char *path) {
 
                     if (execv(cmd, arr[cmdIndex]) != -1) {
                         free(cmd);
+                        
+                        // free the stuff in the child process??
+                        freeArr(&arr, &cmdCount, &allocatedWords);
                         exit(EXIT_SUCCESS);
                     }
 
@@ -222,8 +225,11 @@ int interactiveMode(char *path) {
                         free(cmd);
                     }
                 }
-
                 
+
+                // free the stuff in the child process??
+                freeArr(&arr, &cmdCount, &allocatedWords);
+
                 perror("execv error:");
                 exit(EXIT_FAILURE);
             }
