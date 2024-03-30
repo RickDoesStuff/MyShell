@@ -8,6 +8,4 @@
 #include <dirent.h>
 #include <sys/wait.h>
 
-int freeArr(char ****arr, int *cmdCount);
-
 #endif

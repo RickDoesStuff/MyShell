@@ -10,16 +10,14 @@ int readWordsIntoArray(char ***arr, int *wordCount);
  * arr, pointer to 3d char array, cmd index, word index, char index
  * cmdIndex, pointer to a int that will be set to the amount of cmds in the array (incuding pipes, if, then, else)
 */
-int terminalStream(char ****arr, int *cmdIndex) {
+int terminalStream(char ****arr, int *cmdIndex,char ***wordArr, int *wordCount, int **allocatedWords) {
     
-    char **wordArr=NULL; // word array returned from readWordsIntoArray function
-    int totalWordCount=0; // total word count from readWordsIntoArray function
     int retError=0;
 
     // if not success, return error
-    if ((retError = readWordsIntoArray(&wordArr, &totalWordCount)) != 1) {
-        printf("readWordsIntoArray error: %i\n",retError);
-        return -1;
+    if ((retError = readWordsIntoArray(wordArr, wordCount)) != 1) {
+        //printf("readWordsIntoArray error: %i\n",retError);
+        return 0;
     }
     
     
@@ -27,7 +25,9 @@ int terminalStream(char ****arr, int *cmdIndex) {
     int alloctedCmdAmt = 3; // default size for amount of commands in the array//+2;5+4;9+8 //cmdAmt+=cmdAmt-1
 
     const int defaultCmdLen = 5; // default size for the amount of words in a command line
-    int amtAllocatedWordsInCmd = defaultCmdLen; // current max size of command
+    int amtAllocatedWordsInCmd = defaultCmdLen; // current max size of command            
+    (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
+
     int wordIndex = 0; // curent index of the word in the current command
 
     // allocate cmdArray
@@ -46,14 +46,14 @@ int terminalStream(char ****arr, int *cmdIndex) {
     }
 
     // itterate through each word in the array
-    for (int indexWordArr = 0; indexWordArr<totalWordCount; indexWordArr++) {
-        printf("word: \"%s\",\n",wordArr[indexWordArr]);
+    for (int indexWordArr = 0; indexWordArr<*wordCount; indexWordArr++) {
+        printf("word: \"%s\",\n",(*wordArr)[indexWordArr]);
 
         // if pipe
-        if (strcmp(wordArr[indexWordArr],"|") == 0 ||
-            strcmp(wordArr[indexWordArr],"if") == 0 ||
-            strcmp(wordArr[indexWordArr],"then") == 0 ||
-            strcmp(wordArr[indexWordArr],"else") == 0
+        if (strcmp((*wordArr)[indexWordArr],"|") == 0 ||
+            strcmp((*wordArr)[indexWordArr],"if") == 0 ||
+            strcmp((*wordArr)[indexWordArr],"then") == 0 ||
+            strcmp((*wordArr)[indexWordArr],"else") == 0
             )
         // end curr command and start a new one
         {
@@ -82,14 +82,21 @@ int terminalStream(char ****arr, int *cmdIndex) {
                     }
                 }
             }
+
+            (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
+            printf("allocatedWords:%i\n",(*allocatedWords)[*cmdIndex]);
             // end the current cmd
             (*cmdIndex)++;
             wordIndex=0;
-            (*arr)[*cmdIndex][wordIndex] = wordArr[indexWordArr]; // copy the word from wordArr into arr
+            (*arr)[*cmdIndex][wordIndex] = (*wordArr)[indexWordArr]; // copy the word from wordArr into arr
+            (*allocatedWords)[*cmdIndex] = 1; // this is so we know how many words are allocated in this command
+            printf("allocatedWords:%i\n",(*allocatedWords)[*cmdIndex]);
 
             // end the special cmd, since its special (| if else then)
             (*cmdIndex)++;
             amtAllocatedWordsInCmd = defaultCmdLen;
+            (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
+
             wordIndex=0;
 
 
@@ -99,6 +106,8 @@ int terminalStream(char ****arr, int *cmdIndex) {
             // Check if need to expand array
             if (wordIndex >= amtAllocatedWordsInCmd - 1) {
                 amtAllocatedWordsInCmd *= 2; // Double the size for words within a command.
+                (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
+
                 char **tempWordArr = realloc((*arr)[*cmdIndex], amtAllocatedWordsInCmd * sizeof(char*));
                 if (tempWordArr == NULL) {
                     perror("Couldn't reallocate word array within command");
@@ -111,41 +120,46 @@ int terminalStream(char ****arr, int *cmdIndex) {
                 for (int i = wordIndex + 1; i < amtAllocatedWordsInCmd; i++) {
                     (*arr)[*cmdIndex][i] = NULL;
                 }
+                
             }
             //copy word over
-            (*arr)[*cmdIndex][wordIndex] = wordArr[indexWordArr];
+            (*arr)[*cmdIndex][wordIndex] = (*wordArr)[indexWordArr];
             wordIndex++;
         }
 
     }
     //printf("]");
+
+    (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
+    printf("allocatedWords:%i\n",(*allocatedWords)[*cmdIndex]);
+
     (*cmdIndex)++; // end the last command
 
     
 //    free the unused cmds
-    printf("free unused cmds\n");
+    // printf("free unused cmds\n");
 
-    if (arr == NULL) {return -1;}
-    if (*arr == NULL) {return -1;}
-    for (int i = *cmdIndex; i < alloctedCmdAmt; i++) {
+    // if (arr == NULL) {return -1;}
+    // if (*arr == NULL) {return -1;}
+    // for (int i = *cmdIndex; i < alloctedCmdAmt; i++) {
 
-        if ((*arr)[i] == NULL) {continue;}
-        for (int j = 0; j < defaultCmdLen; j++) {
+    //     if ((*arr)[i] == NULL) {continue;}
+    //     for (int j = 0; j < defaultCmdLen; j++) {
 
-            if ((*arr)[i][j] == NULL) {continue;}
-            free((*arr)[i][j]);
-        }
-        free((*arr)[i]);
-    }
+    //         if ((*arr)[i][j] == NULL) {continue;}
+    //         free((*arr)[i][j]);
+    //     }
+    //     free((*arr)[i]);
+    // }
 
-    // causes issue when freeing here!
-    for (int i = 0; wordArr[i]!=NULL; i++) {
+    // // causes issue when freeing here!
+    // for (int i = 0; wordArr[i]!=NULL; i++) {
 
-        wordArr[i]=NULL;
-    }
-    free(wordArr);
+    //     wordArr[i]=NULL;
+    // }
+    // free(wordArr);
 
-    printf("freed\n");
+    // printf("freed\n");
 
 
     return 1; // it succeded
@@ -158,15 +172,15 @@ int terminalStream(char ****arr, int *cmdIndex) {
 */
 int readWordsIntoArray(char ***arr, int *wordCount){
 
-    int wordAmt = 5; // default size for the amount of words in a command line
+    int allocatedWordAmt = 5; // amt of words allocated for the current command line
     
     // allocate cmdArray
     
-    *arr = malloc(wordAmt * sizeof(char*));
+    *arr = malloc(allocatedWordAmt * sizeof(char*));
     if (*arr == NULL) {perror("Couldn't allocate word array"); return -1;}
 
     // allocate each word in the array
-    for (int i = 0; i < wordAmt; i++) {
+    for (int i = 0; i < allocatedWordAmt; i++) {
         (*arr)[i] = NULL; // Initialize each cmd array to NULL
     }
 
@@ -194,13 +208,13 @@ int readWordsIntoArray(char ***arr, int *wordCount){
             {
                 
                 // Check if need to expand array
-                if (currentWord >= wordAmt - 1) {
-                    wordAmt *= 2; // double the size of the array
-                    char **tempArr = realloc((*arr),wordAmt * sizeof(char*));
+                if (currentWord >= allocatedWordAmt - 1) {
+                    allocatedWordAmt *= 2; // double the size of the array
+                    char **tempArr = realloc((*arr),allocatedWordAmt * sizeof(char*));
                     if (tempArr == NULL) { perror("Couldn't reallocate array of words"); free(buf); return -1; }
                     *arr = tempArr;
                     // Initialize new pointers to NULL
-                    for (int i = currentWord + 1; i < wordAmt; i++) {
+                    for (int i = currentWord + 1; i < allocatedWordAmt; i++) {
                         ((*arr))[i] = NULL;
                     }
                 }
@@ -222,12 +236,14 @@ int readWordsIntoArray(char ***arr, int *wordCount){
 
                 // check if current char is a newline char 
                 if (chr == '\n' && (wordLen > 0 || currentWord > 0)) {
-                    DEBUG printf("**returning\n");
+                    printf("**returning readWordsIntoArray\n");
                     (*arr)[currentWord][wordLen] = '\0'; // Null-terminate
                     
                     // maybe realloc the size of the arr if we run out of index's to use
                     //(*arr)[currentWord] = NULL;    // put NULL as the last index in the 2d array
                     *wordCount = currentWord+1;
+
+                    printf("wordCount:%i\n",*wordCount);
 
                     free(buf);
 
@@ -238,9 +254,10 @@ int readWordsIntoArray(char ***arr, int *wordCount){
                         printf("arr error\n");
                         return -1;
                     }
-                    for (int freeI = *wordCount; freeI<wordAmt; freeI++)
+                    // free all excess words if needed
+                    for (int freeI = *wordCount; freeI<allocatedWordAmt; freeI++)
                     {
-                        if ((*arr)[freeI] == NULL) {break;}
+                        if ((*arr)[freeI] == NULL) {continue;}
                         free((*arr)[freeI]);
                     }
 

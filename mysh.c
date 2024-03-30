@@ -2,6 +2,7 @@
 #include "mysh.h"
 
 int interactiveMode(char *path);
+int freeArr(char ****arr, int *cmdCount, int **allocatedWords);
 
 int main(int argc, char **argv) {
     int interactive = 1; // set interactive mode true by default
@@ -70,19 +71,22 @@ int interactiveMode(char *path) {
     {
         int cmdCount = 0;
         char ***arr=NULL;
+        int wordCount = 0;
+        char **wordArr=NULL;
 
+        int *allocatedWords = malloc(256*sizeof(int));
         printf("\nmysh> ");
         fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
 
         // read in from the terminal
-        int termError = terminalStream(&arr,&cmdCount);
+        int termError = terminalStream(&arr, &cmdCount, &wordArr,&wordCount, &allocatedWords);
         if(termError == -1) {
             printf("Terminal Stream Error\n");
             exit(EXIT_FAILURE);
         } 
         else if(termError == -2) {
             printf("bash: syntax error: %s\n",arr[0][0]);
-            freeArr(&arr, &cmdCount);
+            freeArr(&arr, &cmdCount, &allocatedWords);
             continue;
         }
         // returned with nothing, (user didn't type anything, just hit enter)
@@ -109,7 +113,7 @@ int interactiveMode(char *path) {
         
         if (strcmp(arr[0][0],"exit") == 0) {
             DEBUG printf("exit typed\n");
-            freeArr(&arr, &cmdCount);
+            freeArr(&arr, &cmdCount, &allocatedWords);
             break;
         }
 
@@ -138,7 +142,7 @@ int interactiveMode(char *path) {
                 if(pipe(pipeFDS) != 0)
                 {
                     perror("pipe error:");
-                    freeArr(&arr, &cmdCount);
+                    freeArr(&arr, &cmdCount, &allocatedWords);
                     exit(EXIT_FAILURE);
                 }
                 printf("output set\n");
@@ -150,10 +154,13 @@ int interactiveMode(char *path) {
                 if(pipe(pipeFDS) != 0)
                 {
                     perror("pipe error:");
-                    freeArr(&arr, &cmdCount);
+                    freeArr(&arr, &cmdCount, &allocatedWords);
                     exit(EXIT_FAILURE);
                 }
                 printf("input set\n");
+
+                // go to next command
+                continue;
             }
 
             //int execl(const char *path, const char *arg, ...);
@@ -171,23 +178,23 @@ int interactiveMode(char *path) {
                 // search through each given bin in *bins[]
                 for (int binIndex = 0; binIndex < binCount; binIndex++)
                 {            
-                    int bufSize = strlen(arr[0][0]) + strlen(bins[binIndex]) + 1;
-                    char *buf = malloc((char)bufSize);
+                    int cmdSize = strlen(arr[0][0]) + strlen(bins[binIndex]) + 1;
+                    char *cmd = malloc((char)cmdSize);
 
-                    if (buf == NULL) {perror("Buf wasn't allocated"); exit(EXIT_FAILURE);}
+                    if (cmd == NULL) {perror("Buf wasn't allocated"); exit(EXIT_FAILURE);}
 
-                    snprintf(buf,bufSize,"%s%s",bins[binIndex],arr[cmdIndex][0]);// add the current commands first word to the end of the path to search
+                    snprintf(cmd,cmdSize,"%s%s",bins[binIndex],arr[cmdIndex][0]);// add the current commands first word to the end of the path to search
 
-                    DEBUG printf("\nSearching:%s\n",buf);
+                    DEBUG printf("\nSearching:%s\n",cmd);
 
-                    if (execv(buf, arr[cmdIndex]) != -1) {
-                        free(buf);
+                    if (execv(cmd, arr[cmdIndex]) != -1) {
+                        free(cmd);
                         exit(EXIT_SUCCESS);
                     }
 
                     // free buf
-                    if (buf != NULL) {
-                        free(buf);
+                    if (cmd != NULL) {
+                        free(cmd);
                     }
                 }
 
@@ -208,18 +215,20 @@ int interactiveMode(char *path) {
             }
         }
         // Assuming cmdCount is the total number of commands (including pipes, if, then, else if any)
-        freeArr(&arr, &cmdCount);
+        //freeWordArr(&wordArr, &wordCount);
+        freeArr(&arr, &cmdCount, &allocatedWords);
     }
 
     printf("mysh: exiting\n");
     return 0;
 }
 
-int freeArr(char ****arr, int *cmdCount) {
+int freeArr(char ****arr, int *cmdCount, int **allocatedWords) {
     if (arr == NULL || *arr == NULL) return 0; // Nothing to free
     for (int i = 0; i < *cmdCount; i++) {
         int j = 0;
-        while ((*arr)[i][j] != NULL) {
+        printf("freeing cmd with length: %i\n",(*allocatedWords)[i]);
+        while (j < (*allocatedWords)[i]) {
             free((*arr)[i][j]);
             (*arr)[i][j] = NULL; // Prevent dangling pointer
             j++;
@@ -229,5 +238,22 @@ int freeArr(char ****arr, int *cmdCount) {
     }
     free(*arr);
     *arr = NULL; // Prevent dangling pointer at the top level
+    free(*allocatedWords);
+    return 1; // Success
+}
+
+int freeWordArr(char ***wordArr, int *wordCount) { 
+    if (wordArr == NULL || *wordArr == NULL) return 0; // Nothing to free
+    
+    for (int i = 0; i < *wordCount; i++) {
+        if ((*wordArr)[i] == NULL) {
+            continue;
+        }
+        printf("freeingWA:%s\n",(*wordArr)[i]);
+        free((*wordArr)[i]);
+        (*wordArr)[i] = NULL; // prevent dangling pointer
+    }
+    free(*wordArr);
+    *wordArr = NULL; // Prevent dangling pointer at the top level
     return 1; // Success
 }

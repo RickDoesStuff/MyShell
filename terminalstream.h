@@ -16,6 +16,6 @@
  * arr, pointer to 2d char array
  * cmdCount, pointer to a int that will be set to the amount of commands in the array, words, pipes, etc, but not the word that is NULL
 */
-int terminalStream(char ****arr, int *cmdCount);
+int terminalStream(char ****arr, int *cmdCount, char ***wordArr, int *wordCount, int **allocatedWords);
 
 #endif
