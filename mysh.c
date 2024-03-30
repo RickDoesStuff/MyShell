@@ -111,10 +111,34 @@ int interactiveMode(char *path) {
             exit(EXIT_FAILURE);
         }
         
+        // Exit command
         if (strcmp(arr[0][0],"exit") == 0) {
             DEBUG printf("exit typed\n");
             freeArr(&arr, &cmdCount, &allocatedWords);
             break;
+        } 
+        // PWD command
+        else if (strcmp(arr[0][0], "pwd") == 0) {
+            char cwd[1024];
+            if (getcwd(cwd, sizeof(cwd)) != NULL) {
+                printf("%s\n", cwd);
+            } else {
+                perror("pwd failed");
+            }
+            // get next command
+            freeArr(&arr, &cmdCount, &allocatedWords);
+            continue;
+        } else if (strcmp(arr[0][0], "cd") == 0) {
+            if (arr[0][1] == NULL) {
+                printf("No directory given\n");
+            } else {
+                if (chdir(arr[0][1]) != 0) {
+                    perror("cd failed");
+                }
+            }
+            // get next command
+            freeArr(&arr, &cmdCount, &allocatedWords);
+            continue;
         }
 
 
@@ -160,6 +184,7 @@ int interactiveMode(char *path) {
                 printf("input set\n");
 
                 // go to next command
+
                 continue;
             }
 
