@@ -162,17 +162,23 @@ int interactiveMode(char *path) {
 
             // check if the next cmd is a pipe, if it is, set current output to a file
             if (cmdIndex+1 < cmdCount && strcmp(arr[cmdIndex+1][0], "|") == 0) {
-                int pipeFDS[2] = {STDIN_FILENO,pipeFD};
-                if(pipe(pipeFDS) != 0)
+                // int pipeFDS[2] = {STDIN_FILENO,pipeFD};
+                // if(pipe(pipeFDS) != 0)
+                // {
+                //     perror("pipe error:");
+                //     freeArr(&arr, &cmdCount, &allocatedWords);
+                //     exit(EXIT_FAILURE);
+                // }
+                // printf("output set\n");
+                if(dup2(STDOUT_FILENO, pipeFD) == -1)
                 {
-                    perror("pipe error:");
-                    freeArr(&arr, &cmdCount, &allocatedWords);
+                    perror("dup2 error: ");
                     exit(EXIT_FAILURE);
+
                 }
-                printf("output set\n");
             }
             // current cmd is pipe, if it is, set the next cmds input to the file the prev command wrote to
-            if(cmdIndex+1 < cmdCount && strcmp(arr[cmdIndex+1][0], "|") == 0)
+            if(strcmp(arr[cmdIndex][0], "|") == 0)
             {
                 int pipeFDS[2] = {pipeFD,STDIN_FILENO};
                 if(pipe(pipeFDS) != 0)
