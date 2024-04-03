@@ -8,10 +8,64 @@
 #include "executeCmd.h"
 
 
+
+/**
+ * 
+*/
+int check_command(command *cmd){
+    if (cmd->words == NULL || cmd->words[0] == NULL){
+        // word is null, error
+        return -1;
+    }
+
+    // Exit command
+    if (strcmp(cmd->words[0],"exit") == 0) {
+        // Exiting the program!
+        return 0;
+    }
+    // PWD command
+    else if (strcmp(cmd->words[0], "pwd") == 0) {
+        char cwd[1024];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            printf("%s\n", cwd);
+        } else {
+            perror("pwd failed");
+            return -1;
+        }
+        return 1;
+    }
+    // CD command
+    else if (strcmp(cmd->words[0], "cd") == 0) {
+        if (cmd->words[1] == NULL) {
+            printf("No directory given\n");
+            return 1;
+        } else {
+            if (chdir(cmd->words[1]) != 0) {
+                perror("cd failed");
+                return -1;
+            }
+        }
+        // successfully changed directories
+        return 1;
+    }
+    // not a built in command, so try to execute it
+
+    return execute_command(cmd);
+
+    // if (execute_command(cmd) == -1) {
+    //     // error happened
+    //     return -1;
+    // } else {
+
+    // }
+    // return 1;
+}
+
 /**
  * take a pointer to a command struct
+ * execute the given command
 */
-int execute_command(command *cmd){
+int execute_command(command *cmd) {
     char *bins[] = {"/usr/local/bin/","/usr/bin/","/bin/",""};// searches bins before searching working dir
     int binCount = 4;
     int childpid;
@@ -32,35 +86,34 @@ int execute_command(command *cmd){
             char *cmdDir = malloc((char)cmdSize);
             if (cmdDir == NULL) {perror("Buf wasn't allocated"); exit(EXIT_FAILURE);}
 
-            snprintf(cmdDir,cmdSize,"%s%s",bins[binIndex],cmd->words[0]);// add the current commands first word to the end of the path to search
+            // add the current commands first word to the end of the path to search
+            // basically cmdDir = bins[i] + cmdWords[0]; => cmdDir = "/usr/bin/" + "echo"; => cmdDir = "/usr/bin/echo";
+            snprintf(cmdDir,cmdSize,"%s%s",bins[binIndex],cmd->words[0]);
 
-            printf("\nSearching:%s\n",cmdDir);
+            //printf("\nSearching:%s\n",cmdDir);
 
             if (execv(cmdDir, cmd->words) != -1) {
+                // success
                 free(cmdDir);
-                
-                // free the stuff in the child process??
                 exit(EXIT_SUCCESS);
             }
 
             free(cmdDir);
         }
-        
-
-        // free the stuff in the child process??
-        perror("execv error:");
-        exit(EXIT_FAILURE);
+        // command wasn't found, but no error
+        printf("Command \'%s\' not found.\n", cmd->words[0]);
+        return 1;
     }
     // only in parrent
     if (wait(&status) == -1){
         perror("Error waiting for child:");
-        exit(EXIT_FAILURE);
+        return -1;
     }
     //
     if(!WIFEXITED(status) && WEXITSTATUS(status) != 0){
         printf("error with child process:");
         perror("::");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
 

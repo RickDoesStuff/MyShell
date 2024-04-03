@@ -5,7 +5,78 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
-int readWordsIntoArray(char ***arr, int *wordCount);
+
+
+
+// free the words in the current command
+int freeWords(command *cmd) {
+    
+    // free all the current words
+    printf("\ncurrent cmd words: ");
+    for (int i = 0; i < cmd->length; i++) {
+        printf("%s ", cmd->words[i]);
+        free(cmd->words[i]);
+    }
+    printf("\n");
+    free(cmd->words);
+    return 1;
+}
+
+// malloc the words
+int mallocWords(command *cmd) { 
+    cmd->words = malloc(sizeof(char*)*cmd->size);
+    if (cmd->words == NULL) {perror("Couldn't allocate cmd"); return -1;}
+    for (int i = 0; i < cmd->size; i++) {
+        cmd->words[i] = NULL; // set each pointer to null
+    }
+
+    return 1;
+}
+
+// setup the command struct for the first time
+int initCommand(command *cmd) {
+    cmd->size = 5;
+    cmd->length = 0;
+    cmd->type = 0;
+    mallocWords(cmd);
+    return 1;
+}
+
+// reset the command struct and re-initialize
+// doesnt reset the type variable
+int resetCommand(command *cmd) {
+    freeWords(cmd);
+    cmd->size = 5;
+    cmd->length = 0;
+    mallocWords(cmd);
+    return 1;
+}
+
+// run the command in our shell
+int runCommand(command *cmd) {
+
+    // get the return code from execute_command
+    int execCmdRetCode=execute_command(cmd);
+
+    // check if user executed exit command
+    if (execCmdRetCode == 0) {
+        freeWords(cmd);
+        exit(EXIT_SUCCESS);
+    }
+    // check if exited with error
+    else if (execCmdRetCode == -1) {
+        // error, exit the program
+        printf("error in execute_command.c\n");
+        freeWords(cmd);
+        exit(EXIT_FAILURE);
+    }
+    // execute_command functioned as expected, reset to get next user input
+    // reset command and get next
+    resetCommand(&cmd);
+    return 1;
+}
+
+
 /**
  * arr, pointer to 3d char array, cmd index, word index, char index
  * cmdIndex, pointer to a int that will be set to the amount of cmds in the array (incuding pipes, if, then, else)
@@ -20,120 +91,80 @@ int terminalStream(char ****arr, int *cmdIndex,char ***wordArr, int *wordCount, 
         return 0;
     }
     
-    
-    
-    int alloctedCmdAmt = 3; // default size for amount of commands in the array//+2;5+4;9+8 //cmdAmt+=cmdAmt-1
-
-    const int defaultCmdLen = 5; // default size for the amount of words in a command line
-    int amtAllocatedWordsInCmd = defaultCmdLen; // current max size of command            
-    (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
-
-    int wordIndex = 0; // curent index of the word in the current command
-
-    // allocate cmdArray
-    *arr = malloc(alloctedCmdAmt * sizeof(char*));
-    if (*arr == NULL) {perror("Couldn't allocate cmd array"); return -1;}
-
-    // allocate each cmd in the array
-    for (int i = 0; i < alloctedCmdAmt; i++) {
-        (*arr)[i] = malloc(defaultCmdLen * sizeof(char*));
-        if ((*arr)[i] == NULL) {perror("Couldn't allocate word array"); return -1;}
-        
-        // allocate each word in the array
-        for (int j = 0; j < defaultCmdLen; j++) {
-            (*arr)[i][j] = NULL; // Initialize each cmd array to NULL
-        }
+    printf("checking word arr\n");
+    for (int i = 0; i < *wordCount; i++){
+        printf("word: %s\n", (*wordArr)[i]);
     }
+    printf("end check for word arr\n");
+    
+    
+    
+    // setup the command struct and initialize it
+    command cmd;
+    initCommand(&cmd);
+    
 
     // itterate through each word in the array
-    for (int indexWordArr = 0; indexWordArr<*wordCount; indexWordArr++) {
-        printf("word: \"%s\",\n",(*wordArr)[indexWordArr]);
+    for (int index = 0; index<*wordCount; index++) {
+        printf("checking word: \"%s\",\n",(*wordArr)[index]);
 
         // if pipe
-        if (strcmp((*wordArr)[indexWordArr],"|") == 0 ||
-            strcmp((*wordArr)[indexWordArr],"if") == 0 ||
-            strcmp((*wordArr)[indexWordArr],"then") == 0 ||
-            strcmp((*wordArr)[indexWordArr],"else") == 0
+        if (strcmp((*wordArr)[index],"|") == 0 ||
+            strcmp((*wordArr)[index],"if") == 0 ||
+            strcmp((*wordArr)[index],"then") == 0 ||
+            strcmp((*wordArr)[index],"else") == 0
             )
-        // end curr command and start a new one
+        // end curr command execute it, and wipe the cmd to start over
         {
-            // Check if need to expand array
-            // allocated cmd amt - current Cmd Amt <= 2 see if there is less than or equal to 2 more cmds i can fit 
-            if (alloctedCmdAmt - (*cmdIndex + 1) <= 2) {
-                alloctedCmdAmt *= 2; // Double the size of the array for commands.
-                char ***tempArr = realloc((*arr), alloctedCmdAmt * sizeof(char**));
-                if (tempArr == NULL) {
-                    perror("Couldn't reallocate array of cmds");
-                    // Handle error, e.g., by freeing previously allocated memory.
-                    return -1;
-                }
-                *arr = tempArr;
-
-                // Initialize new command arrays.
-                for (int i = *cmdIndex + 1; i < alloctedCmdAmt; i++) {
-                    (*arr)[i] = malloc(defaultCmdLen * sizeof(char*));
-                    if ((*arr)[i] == NULL) {
-                        perror("Couldn't allocate word array for new cmd");
-                        // Handle error.
-                        return -1;
-                    }
-                    for (int j = 0; j < defaultCmdLen; j++) {
-                        (*arr)[i][j] = NULL; // Initialize each word pointer to NULL.
-                    }
-                }
+            // check if its a pipe
+            if (strcmp((*wordArr)[index],"|") == 0) {
+                cmd.type = 1;
             }
 
-            (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
-            printf("allocatedWords:%i\n",(*allocatedWords)[*cmdIndex]);
-            // end the current cmd
-            (*cmdIndex)++;
-            wordIndex=0;
-            (*arr)[*cmdIndex][wordIndex] = (*wordArr)[indexWordArr]; // copy the word from wordArr into arr
-            (*allocatedWords)[*cmdIndex] = 1; // this is so we know how many words are allocated in this command
-            printf("allocatedWords:%i\n",(*allocatedWords)[*cmdIndex]);
+            // runs the command
+            runCommand(&cmd);
 
-            // end the special cmd, since its special (| if else then)
-            (*cmdIndex)++;
-            amtAllocatedWordsInCmd = defaultCmdLen;
-            (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
-
-            wordIndex=0;
-
+            printf("pipe found\n");
 
         } else 
         // normal word
         {
             // Check if need to expand array
-            if (wordIndex >= amtAllocatedWordsInCmd - 1) {
-                amtAllocatedWordsInCmd *= 2; // Double the size for words within a command.
-                (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
-
-                char **tempWordArr = realloc((*arr)[*cmdIndex], amtAllocatedWordsInCmd * sizeof(char*));
-                if (tempWordArr == NULL) {
+            if (cmd.length >= cmd.size - 1) {
+                cmd.size *= 2; // Double the size for words within a command.
+                
+                cmd.words = realloc(cmd.words, cmd.size * sizeof(char*));
+                if (cmd.words == NULL) {
                     perror("Couldn't reallocate word array within command");
                     // Handle error.
                     return -1;
                 }
-                (*arr)[*cmdIndex] = tempWordArr;
-
-                // Initialize new word pointers to NULL.
-                for (int i = wordIndex + 1; i < amtAllocatedWordsInCmd; i++) {
-                    (*arr)[*cmdIndex][i] = NULL;
-                }
                 
+                // Initialize new word pointers to NULL.
+                for (int i = cmd.length + 1; i < cmd.size; i++) {
+                    cmd.words[i] = NULL;
+                }
             }
             //copy word over
-            (*arr)[*cmdIndex][wordIndex] = (*wordArr)[indexWordArr];
-            wordIndex++;
+            cmd.length++;
+            cmd.words[cmd.length-1] = (*wordArr)[index];
         }
 
     }
-    //printf("]");
 
-    (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
-    printf("allocatedWords:%i\n",(*allocatedWords)[*cmdIndex]);
+    
+    // runs the command
+    runCommand(&cmd);
 
-    (*cmdIndex)++; // end the last command
+    // free the malloc'd array
+    freeWords(&cmd);
+
+    // //printf("]");
+
+    // (*allocatedWords)[*cmdIndex] = amtAllocatedWordsInCmd; // this is so we know how many words are allocated in this command
+    // printf("allocatedWords:%i\n",(*allocatedWords)[*cmdIndex]);
+
+    // (*cmdIndex)++; // end the last command
 
     
 //    free the unused cmds
@@ -295,7 +326,12 @@ int readWordsIntoArray(char ***arr, int *wordCount){
                     }
 
                     printf("put pipe in array\n");
-                    (*arr)[currentWord]= malloc(2 * sizeof(char)); // Space for '|' and '\0'
+
+                    // Space for '|' and '\0'
+                    if ((*arr)[currentWord] == NULL) {
+                        (*arr)[currentWord] = malloc(sizeof(char) * 2);
+                        if ((*arr)[currentWord] == NULL) { perror("Couldn't allocate word"); free(buf); return -1; }
+                    }
                     (*arr)[currentWord][0] = '|';
                     (*arr)[currentWord][1] = '\0';
 
@@ -328,4 +364,3 @@ int readWordsIntoArray(char ***arr, int *wordCount){
     printf("Reached end termStream error\n");
     return 0;
 }
-
