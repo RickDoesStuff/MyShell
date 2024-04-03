@@ -96,18 +96,8 @@ int interactiveMode(char *path) {
         }
 
         // if the arr is somehow null
-        if (arr==NULL) {
+        if (arr==NULL || arr[0]==NULL || arr[0][0]==NULL) {
             printf("arr is null\n");
-            exit(EXIT_FAILURE);
-        }
-        // if the arr is somehow null
-        if (arr[0]==NULL) {
-            printf("arr[0] is null\n");
-            exit(EXIT_FAILURE);
-        }
-        // if the arr is somehow null
-        if (arr[0][0]==NULL) {
-            printf("arr[0][0] is null\n");
             exit(EXIT_FAILURE);
         }
         
