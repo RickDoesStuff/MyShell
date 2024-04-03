@@ -73,7 +73,7 @@ int interactiveMode(char *path) {
         int wordCount = 0;
         char **wordArr=NULL;
 
-        printf("mysh> ");
+        printf("\nmysh> ");
         fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
 
         // read in from the terminal
@@ -104,7 +104,7 @@ int interactiveMode(char *path) {
         continue;
     }
 
-    printf("mysh: exiting\n");
+    printf("\nmysh: exiting\n");
     return 0;
 }
 

@@ -12,7 +12,7 @@
 int freeWords(command *cmd) {
     
     // free all the current words
-    printf("\nfreeing: ");
+    printf("freeing: ");
     for (int i = 0; i < cmd->size; i++) {
         printf("\'%s\' ", cmd->words[i]);
 
@@ -21,7 +21,7 @@ int freeWords(command *cmd) {
         free(cmd->words[i]);
         cmd->words[i] = NULL;
     }
-    printf("\n");
+    //printf("\n");
     if (cmd->words != NULL){
         free(cmd->words);
     }
@@ -87,9 +87,8 @@ int runCommand(command *cmd) {
         freeWords(cmd);
         return -1;
     }
-    // execute_command functioned as expected, reset to get next user input
-    // reset command and get next
-    resetCommand(cmd);
+    // execute_command functioned as expected, get next user input
+    // doesn't free or reset here, do that in other functions!
     return 1;
 }
 
@@ -153,12 +152,13 @@ int terminalStream(char ***wordArr, int *wordCount) {
             if(runCmdRetCode != 1) {
                 return runCmdRetCode;
             }
+            resetCommand(&cmd);
             // run was successful
-            printf("pipe found\n");
+            // printf("pipe found\n");
 
 
-            // free the pipe
-            printf("freeing: '|'\n");
+            // free the special word
+            printf("'%s'\n",(*wordArr)[index]);
             free((*wordArr)[index]);
 
         } else 
