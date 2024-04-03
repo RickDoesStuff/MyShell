@@ -10,9 +10,13 @@
 
 
 /**
- * 
+ * takes a pointer to a command struct
+ * checks the command against our built in functions then tries to execute using execv
+ * return -1 error
+ * return 0 wants to exit
+ * return 1 success, valid, invalid or no command given but functioned as expected
 */
-int check_command(command *cmd){
+int check_command(command *cmd) {
     if (cmd->words == NULL || cmd->words[0] == NULL){
         // word is null, error
         return -1;
@@ -21,6 +25,7 @@ int check_command(command *cmd){
     // Exit command
     if (strcmp(cmd->words[0],"exit") == 0) {
         // Exiting the program!
+        printf("**exit typed!**\n");
         return 0;
     }
     // PWD command
@@ -64,6 +69,8 @@ int check_command(command *cmd){
 /**
  * take a pointer to a command struct
  * execute the given command
+ * 
+ * **only to be used by check_command();**
 */
 int execute_command(command *cmd) {
     char *bins[] = {"/usr/local/bin/","/usr/bin/","/bin/",""};// searches bins before searching working dir

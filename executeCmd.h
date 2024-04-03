@@ -18,8 +18,19 @@ typedef struct command{
 } command;
 
 /**
+ * takes a pointer to a command struct
+ * checks the command against our built in functions then tries to execute using execv
+ * return -1 error
+ * return 0 wants to exit
+ * return 1 success, valid, invalid or no command given but functioned as expected
+*/
+int check_command(command *cmd);
+
+/**
  * take a pointer to a command struct
  * execute the given command
+ * 
+ * **only to be used by check_command();**
 */
 int execute_command(command *cmd);
 

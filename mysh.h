@@ -8,4 +8,8 @@
 #include <dirent.h>
 #include <sys/wait.h>
 
+
+// free the array
+int freeArr(char ***wordArr, int *wordCount);
+
 #endif
