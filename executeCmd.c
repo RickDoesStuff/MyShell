@@ -23,7 +23,7 @@ int check_command(command *cmd) {
     }
 
     // Exit command
-    if (strcmp(cmd->words[0],"exit") == 0) {
+    if (strcmp(cmd->words[0],"exit") == 0 && cmd->length == 1) {
         // Exiting the program!
         printf("**exit typed!**\n");
         return 0;

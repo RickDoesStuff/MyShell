@@ -73,7 +73,7 @@ int interactiveMode(char *path) {
         int wordCount = 0;
         char **wordArr=NULL;
 
-        printf("\nmysh> ");
+        printf("mysh> ");
         fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
 
         // read in from the terminal
@@ -83,12 +83,15 @@ int interactiveMode(char *path) {
         if(termStreamRetCode == -1) {
             printf("Terminal Stream Error\n");
             //freeArr(&wordArr, &wordCount);
+            
+            free(wordArr);
             exit(EXIT_FAILURE);
         }
         // check if user wants to exit
         else if(termStreamRetCode == 0) {
             //printf("calling free at exit;2\n");
             //freeArr(&wordArr, &wordCount);
+            free(wordArr);
             isRunning = 0;
             continue;
         }
@@ -97,6 +100,7 @@ int interactiveMode(char *path) {
         // get next command
         //printf("calling free at end;3\n");
         //freeArr(&wordArr, &wordCount);
+        free(wordArr);
         continue;
     }
 

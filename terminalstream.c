@@ -13,13 +13,18 @@ int freeWords(command *cmd) {
     
     // free all the current words
     printf("\nfreeing: ");
-    for (int i = 0; i < cmd->length; i++) {
+    for (int i = 0; i < cmd->size; i++) {
         printf("\'%s\' ", cmd->words[i]);
+
+        if (cmd->words[i] == NULL) {continue;}
+        // only free if not null
         free(cmd->words[i]);
         cmd->words[i] = NULL;
     }
     printf("\n");
-    free(cmd->words);
+    if (cmd->words != NULL){
+        free(cmd->words);
+    }
     return 1;
 }
 
@@ -27,8 +32,8 @@ int freeWords(command *cmd) {
 int mallocWords(command *cmd) { 
 
     cmd->words = malloc(sizeof(char*)*cmd->size);
-
     if (cmd->words == NULL) {perror("Couldn't allocate cmd"); return -1;}
+
     for (int i = 0; i < cmd->size; i++) {
         cmd->words[i] = NULL; // set each pointer to null
     }
@@ -57,7 +62,8 @@ int resetCommand(command *cmd) {
 
 /**
  * run the command in our shell
- * frees the words when done, on exit, error and success
+ * frees the words on exit, error
+ * resets the command on success
  * return 1 on success
  * return 0 on user request to exit
  * return -1 on error
@@ -88,6 +94,7 @@ int runCommand(command *cmd) {
 }
 
 
+
 /**
  * arr, pointer to a string array, will be written to, all words typed into a terminal for one command
  * wordCount, pointer to an int, will be written to with the # of words in the arr
@@ -98,12 +105,16 @@ int runCommand(command *cmd) {
 */
 int terminalStream(char ***wordArr, int *wordCount) {
     
-    int retError=0;
+    int retError=readWordsIntoArray(wordArr, wordCount);
 
     // check if we could read words into the array
-    if ((retError = readWordsIntoArray(wordArr, wordCount)) != 1) {
+    if (retError == -1) {
+        // error
         //printf("readWordsIntoArray error: %i\n",retError);
         return -1;
+    } else if (retError == 0) {
+        // typed nothing and just hit enter
+        return 1;
     }
     
     //printf("checking word arr\n");
@@ -184,6 +195,8 @@ int terminalStream(char ***wordArr, int *wordCount) {
     if(runCmdRetCode != 1) {
         return runCmdRetCode;
     }
+    // free the words
+    freeWords(&cmd);
 
     return 1; // it succeeded!
 }
@@ -193,7 +206,7 @@ int terminalStream(char ***wordArr, int *wordCount) {
  * take in an array of strings and the amount of words in that array
  * and writes to them
  * return 1 on success
- * return 0 on something really weird happening
+ * return 0 on user didnt type anything and just hit enter
  * return -1 on error
 */
 int readWordsIntoArray(char ***arr, int *wordCount){
@@ -349,7 +362,7 @@ int readWordsIntoArray(char ***arr, int *wordCount){
             }
         } else {
             // no bytes to read
-            printf("no bytes to read\n");
+            //printf("no bytes to read\n");
             // hit enter before data was read
             free(buf);
             return 0;
