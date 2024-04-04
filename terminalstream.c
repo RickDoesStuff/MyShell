@@ -43,16 +43,25 @@ int initCommand(command *cmd) {
     cmd->type = 0;
     cmd->pipeIn = 0;
     cmd->pipeOut = 0;
+    cmd->redirectIn = -1;
+    cmd->redirectOut = -1;
     mallocWords(cmd);
     return 1;
 }
 
-// reset the command struct and re-initialize
-// doesnt reset the type variable
+/**
+ * reset the words
+ * set size back to 5
+ * length to 0
+ * reset redirectIn to -1
+ * reset redirectOut to -1
+*/
 int resetCommand(command *cmd) {
     freeWords(cmd);
     cmd->size = 5;
     cmd->length = 0;
+    cmd->redirectIn = -1;
+    cmd->redirectOut = -1;
     mallocWords(cmd);
     return 1;
 }
@@ -102,12 +111,12 @@ int runCommand(command *cmd) {
 /**
  * arr, pointer to a string array, will be written to, all words typed into a terminal for one command
  * wordCount, pointer to an int, will be written to with the # of words in the arr
- * cmdIndex, pointer to a int that will be set to the amount of cmds in the array (incuding pipes, if, then, else)
+ * command struct, where we write the commands to
  * return 1 on success
  * return 0 on user request to exit
  * return -1 on error
 */
-int terminalStream(char ***wordArr, int *wordCount) {
+int terminalStream(char ***wordArr, int *wordCount, command *cmd) {
     
     int retError=readWordsIntoArray(wordArr, wordCount);
 
@@ -129,9 +138,7 @@ int terminalStream(char ***wordArr, int *wordCount) {
     
     
     
-    // setup the command struct and initialize it
-    command cmd;
-    initCommand(&cmd);
+    initCommand(cmd);
     
 
     // itterate through each word in the array
@@ -147,32 +154,32 @@ int terminalStream(char ***wordArr, int *wordCount) {
         {
             // check if current command is a pipe
             if (strcmp((*wordArr)[index],"|") == 0) {
-                cmd.type=1; // start of a pipe / passing into a pipe
-                cmd.pipeIn = 1;
+                cmd->type=1; // start of a pipe / passing into a pipe
+                cmd->pipeIn = 1;
             }
 
             // runs the command
-            int runCmdRetCode = runCommand(&cmd);
+            int runCmdRetCode = runCommand(cmd);
             // exiting either user request(0) or on error (-1)
             if(runCmdRetCode != 1) {
                 return runCmdRetCode;
             }
             // run cmd
-            resetCommand(&cmd);
+            resetCommand(cmd);
             // done running current command
             
             // setup next command of the pipe
             if (strcmp((*wordArr)[index],"|") == 0) {
-                cmd.pipeIn = 0; // next command is unknown if passing into a pipe so we reset
-                cmd.pipeOut = 1; // next command is taking from a pipe
+                cmd->pipeIn = 0; // next command is unknown if passing into a pipe so we reset
+                cmd->pipeOut = 1; // next command is taking from a pipe
             }
 
             // setup the next command as a command that should check the exit status of the current command that just ran
             if (strcmp((*wordArr)[index],"then") == 0) {
-                cmd.type=2;
+                cmd->type=2;
             }
             if (strcmp((*wordArr)[index],"else") == 0) {
-                cmd.type=3;
+                cmd->type=3;
             }
 
             // free the special word
@@ -180,41 +187,75 @@ int terminalStream(char ***wordArr, int *wordCount) {
             free((*wordArr)[index]);
 
         } else 
-        // normal word
+        // check if redirection
+        if (strcmp((*wordArr)[index],"<") == 0 ||
+            strcmp((*wordArr)[index],">") == 0)
         {
+            index++; // index is now currently the file name
+             
+            if ((*wordArr)[index] == NULL) {
+                printf("redirection error, no file specified.\n");
+                return 1;
+            }
+            // output redirection
+            int fd = -1;
+            if (strcmp((*wordArr)[index-1],">") == 0) {
+                if ((fd = open((*wordArr)[index], O_CREAT | O_TRUNC | O_WRONLY, 0640)) == -1){
+                    printf("Unable open file \'%s\' for output redirection.\n",(*wordArr)[index]);
+                    return 1;
+                }
+                printf("redirecting output to \'%s\' : fd:%i.\n",(*wordArr)[index], fd);
+                cmd->redirectOut = fd;
+            } else
+            // input redirection
+            if (strcmp((*wordArr)[index-1],"<") == 0) {
+                if ((fd = open((*wordArr)[index], O_RDONLY)) == -1){
+                    printf("Unable open file \'%s\' for input redirection.\n",(*wordArr)[index]);
+                    return 1;
+                }
+                printf("redirecting input to \'%s\' : fd:%i.\n",(*wordArr)[index], fd);
+                cmd->redirectIn = fd;
+            }
+            // free the words not being added to cmd array
+            free((*wordArr)[index-1]);
+            free((*wordArr)[index]);
+        }
+        else {        
+            // normal word
+            
             // Check if need to expand array
-            if (cmd.length >= cmd.size - 1) {
-                cmd.size *= 2; // Double the size for words within a command.
+            if (cmd->length >= cmd->size - 1) {
+                cmd->size *= 2; // Double the size for words within a command.
                 
-                cmd.words = realloc(cmd.words, cmd.size * sizeof(char*));
-                if (cmd.words == NULL) {
+                cmd->words = realloc(cmd->words, cmd->size * sizeof(char*));
+                if (cmd->words == NULL) {
                     perror("Couldn't reallocate word array within command");
                     // Handle error.
                     return -1;
                 }
                 
                 // Initialize new word pointers to NULL.
-                for (int i = cmd.length + 1; i < cmd.size; i++) {
-                    cmd.words[i] = NULL;
+                for (int i = cmd->length + 1; i < cmd->size; i++) {
+                    cmd->words[i] = NULL;
                 }
             }
             //copy word over
-            cmd.words[cmd.length] = (*wordArr)[index];
-            cmd.length++;
+            cmd->words[cmd->length] = (*wordArr)[index];
+            cmd->length++;
         }
 
     }
     
 
     // runs the command
-    int runCmdRetCode = runCommand(&cmd);
+    int runCmdRetCode = runCommand(cmd);
     // exiting either user request(0) or on error (-1)
     if(runCmdRetCode != 1) {
         return runCmdRetCode;
     }
     // free the words
-    freeWords(&cmd);
-    cmd.type=0;
+    freeWords(cmd);
+    cmd->type=0;
     //printf("***line ended***\n");
 
     return 1; // it succeeded!
@@ -350,7 +391,7 @@ int readWordsIntoArray(char ***arr, int *wordCount) {
                 }
 
                 // current char is a pipe
-                else if (chr == '|') {
+                else if (chr == '|' || chr == '<' || chr == '>') {
                     // end current word
                     if (wordLen > 0) { // echo hi |
                         // pipe comes after a letter

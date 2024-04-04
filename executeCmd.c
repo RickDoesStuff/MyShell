@@ -82,8 +82,19 @@ int execute_command(command *cmd) {
     } else if (childpid == 0) {
         // only in child
 
-        // cmd before the pipe
-        if (cmd->pipeIn == 1 && cmd->pipeOut == 0) {
+        // input redirection
+        if (cmd->redirectIn != -1) {
+            dup2(cmd->redirectIn, STDIN_FILENO); // redirect stdin from cmd->redirectIn
+            close(cmd->redirectIn); // close when done with it
+        }
+        // output redirection
+        if (cmd->redirectOut != -1) {
+            dup2(cmd->redirectOut, STDOUT_FILENO); // redirect stdin from cmd->redirectIn
+            close(cmd->redirectOut); // close when done with it
+        }
+
+        // cmd before the pipe HERE | ...          also makes sure there is no specified redirectOut
+        if (cmd->pipeIn == 1 && cmd->pipeOut == 0 && cmd->redirectOut == -1) {
             dup2(currPipe[1], STDOUT_FILENO); // printf now writes to the write end of the pipe
             //printf("pipeIn == 1 : currPipe[0]:%i, currPipe[1]:%i\n", currPipe[0], currPipe[1]);
 
@@ -92,9 +103,9 @@ int execute_command(command *cmd) {
             close(currPipe[1]);
             close(prevPipe[0]);
             close(prevPipe[1]);
-        }
-        // cmd after the pipe
-        if (cmd->pipeIn == 0 && cmd->pipeOut == 1) {
+        } else
+        // cmd after the pipe ... | HERE          also makes sure there is no specified redirectIn
+        if (cmd->pipeIn == 0 && cmd->pipeOut == 1 && cmd->redirectIn == -1) {
 
             // redirect stdin to the read end of the pipe
             dup2(currPipe[0], STDIN_FILENO);
@@ -104,12 +115,17 @@ int execute_command(command *cmd) {
             close(currPipe[1]);
             close(prevPipe[0]);
             close(prevPipe[1]);
-        }
-        // cmd between pipes
+        } else
+        // cmd between pipes ... | HERE | ...           also makes sure there is no specified redirection
         if (cmd->pipeIn == 1 && cmd->pipeOut == 1) {
-            dup2(prevPipe[0], STDIN_FILENO); // Redirect stdin from prevPipe read end
-            dup2(currPipe[1], STDOUT_FILENO); // Redirect stdout to currPipe write end
-
+            // check if there it input redirection
+            if (cmd->redirectIn == -1) {
+                dup2(prevPipe[0], STDIN_FILENO); // Redirect stdin from prevPipe read end
+            }
+            // check if there it output redirection
+            if (cmd->redirectOut == -1) {
+                dup2(currPipe[1], STDOUT_FILENO); // Redirect stdout to currPipe write end
+            }
             // not needed
             close(currPipe[1]); // Close unused write end
             close(currPipe[0]); // Close after dup2
@@ -117,6 +133,10 @@ int execute_command(command *cmd) {
             close(prevPipe[1]); // Close after dup2
         }
 
+
+
+
+    // move all the built in commands to here at some point
 
 
         // search through each given bin in *bins[]
@@ -166,6 +186,16 @@ int execute_command(command *cmd) {
         //printf("pipeOut && pipeIn : close prevPipe[0]:%i, currPipe[1]:%i\n", prevPipe[0], currPipe[1]);
     }
 
+    // input redirection
+    if (cmd->redirectIn != -1) {
+        close(cmd->redirectIn); // close when done with it
+        cmd->redirectIn = -1; // reset the value
+    }
+    // output redirection
+    if (cmd->redirectOut != -1) {
+        close(cmd->redirectOut); // close when done with it
+        cmd->redirectOut = -1; // reset the value
+    }
 
     // status is set to 1 on failure and 0 on success
     if (waitpid(childpid, &status, 0) == -1) {

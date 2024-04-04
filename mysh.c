@@ -88,8 +88,11 @@ int interactiveMode(char *path, int interactive) {
         }
 
         // read in from the terminal
-        int termStreamRetCode = terminalStream(&wordArr, &wordCount);
         
+        // setup the command struct and initialize it
+        command cmd;
+        int termStreamRetCode = terminalStream(&wordArr, &wordCount, &cmd);
+
         // check if error
         if(termStreamRetCode == -1) {
             printf("Terminal Stream Error\n");
