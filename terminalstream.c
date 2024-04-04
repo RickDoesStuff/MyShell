@@ -41,6 +41,8 @@ int initCommand(command *cmd) {
     cmd->size = 5;
     cmd->length = 0;
     cmd->type = 0;
+    cmd->pipeIn = 0;
+    cmd->pipeOut = 0;
     mallocWords(cmd);
     return 1;
 }
@@ -136,9 +138,10 @@ int terminalStream(char ***wordArr, int *wordCount) {
             )
         // end curr command execute it, and wipe the cmd to start over
         {
-            // check if its a pipe
+            // check if current command is a pipe
             if (strcmp((*wordArr)[index],"|") == 0) {
-                cmd.type = 1;
+                cmd.type=1; // start of a pipe / passing into a pipe
+                cmd.pipeIn = 1;
             }
 
             // runs the command
@@ -147,14 +150,14 @@ int terminalStream(char ***wordArr, int *wordCount) {
             if(runCmdRetCode != 1) {
                 return runCmdRetCode;
             }
+            // run cmd
             resetCommand(&cmd);
             
-            if (cmd.type == 1) {
-                cmd.type++;
+            // setup next command of the pipe
+            if (strcmp((*wordArr)[index],"|") == 0) {
+                cmd.pipeIn = 0; // next command is unknown if passing into a pipe so we reset
+                cmd.pipeOut = 1; // next command is taking from a pipe
             }
-            // run was successful
-            // printf("pipe found\n");
-
 
             // free the special word
             printf("'%s'\n",(*wordArr)[index]);
@@ -185,7 +188,6 @@ int terminalStream(char ***wordArr, int *wordCount) {
         }
 
     }
-
     
 
     // runs the command
@@ -196,6 +198,8 @@ int terminalStream(char ***wordArr, int *wordCount) {
     }
     // free the words
     freeWords(&cmd);
+    cmd.type=0;
+    printf("***line ended***\n");
 
     return 1; // it succeeded!
 }
@@ -245,21 +249,24 @@ int readWordsIntoArray(char ***arr, int *wordCount) {
             for (int currentPos = 0; currentPos < numBytesRead; currentPos++) 
             {
                 
-                // Check if need to expand array
-                if (currentWord >= allocatedWordAmt - 1) {
+                // Check if need to expand array (its -2 bc -1 causes an error here: echo hi| ls|echo hey)
+                if (currentWord >= allocatedWordAmt - 2) {
+                    //printf("realloc\n");
                     allocatedWordAmt *= 2; // double the size of the array
-                    char **tempArr = realloc((*arr), allocatedWordAmt * sizeof(char*));
-                    if (tempArr == NULL) { perror("Couldn't reallocate array of words"); free(buf); return -1; }
-                    *arr = tempArr;
+                    *arr = realloc((*arr), allocatedWordAmt * sizeof(char*));
+                    if (*arr == NULL) { perror("Couldn't reallocate array of words"); free(buf); return -1; }
+                    //*arr = tempArr;
                     // Initialize new pointers to NULL
                     for (int i = currentWord + 1; i < allocatedWordAmt; i++) {
                         ((*arr))[i] = NULL;
                     }
                 }
 
+                //printf("expansion done if needed\n");
+
                 char chr = buf[currentPos]; // get the current char we are checking
                 //printf("[currWord:%i][wordLen:%i][Char:\'%c\']\n", currentWord,wordLen,chr);
-                
+                //printf("curr char:\'%c\'\n",chr);
                 // ensure current word is allocated
                 if ((*arr)[currentWord] == NULL) {
                     (*arr)[currentWord] = malloc(sizeof(char) * currentWordSize);
@@ -271,6 +278,9 @@ int readWordsIntoArray(char ***arr, int *wordCount) {
                     (*arr)[currentWord] = realloc((*arr)[currentWord], currentWordSize);
                     if ((*arr)[currentWord] == NULL) { perror("Couldn't reallocate word"); free(buf); return -1; }
                 }
+
+                
+                //printf("expanded for terminator\n");
 
                 // check if current char is a newline char 
                 if (chr == '\n' && (wordLen > 0 || currentWord > 0)) {
@@ -330,6 +340,7 @@ int readWordsIntoArray(char ***arr, int *wordCount) {
                         // pipe comes after a letter
                         // printf("End current word\n");
                         (*arr)[currentWord][wordLen] = '\0'; // Null-terminate
+                        printf("curr word:%s\n",(*arr)[currentWord]);
                         currentWord ++;
                     }
 
@@ -340,19 +351,26 @@ int readWordsIntoArray(char ***arr, int *wordCount) {
                         (*arr)[currentWord] = malloc(sizeof(char) * 2);
                         if ((*arr)[currentWord] == NULL) { perror("Couldn't allocate word"); free(buf); return -1; }
                     }
-                    (*arr)[currentWord][0] = '|';
+                    (*arr)[currentWord][0] = chr;
                     (*arr)[currentWord][1] = '\0';
 
                     // pipe word is done, reset vals and increase the word count
                     currentWord ++;
                     wordLen = 0;  // current len of word
                     currentWordSize = 8; // set to default size again
-
+                    //printf("reset\n");
                 }
                 else{
+                    //printf("not space, pipe or new line\n");
                     // not space, pipe, or new line
-
+                    //printf("(*arr)[%i]",wordLen);
+                    //printf("[%i]:",wordLen);
+                    //printf("\'%c\'\n",chr);
+                    //printf("(*arr) is %p\n",*arr);
+                    //printf("(*arr)[currentWord] is %p\n",(*arr)[currentWord]);
+                    //if ((*arr)[currentWord][wordLen] == NULL) {printf("(*arr)[currentWord][wordLen] null");}
                     (*arr)[currentWord][wordLen] = chr; // Append character
+                    //printf("\'%c\'\n",(*arr)[currentWord][wordLen]);
                     (*arr)[currentWord][wordLen + 1] = '\0'; // Null-terminate
                     wordLen++;
                     // echo hi | echo hello
