@@ -199,7 +199,7 @@ int terminalStream(char ***wordArr, int *wordCount) {
     // free the words
     freeWords(&cmd);
     cmd.type=0;
-    printf("***line ended***\n");
+    //printf("***line ended***\n");
 
     return 1; // it succeeded!
 }

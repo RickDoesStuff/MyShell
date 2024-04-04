@@ -63,15 +63,15 @@ int execute_command(command *cmd) {
     int childpid;
     int status;
 
-    printf("\npipeIn:%i pipeOut:%i\n", cmd->pipeIn, cmd->pipeOut);
+    //printf("\npipeIn:%i pipeOut:%i\n", cmd->pipeIn, cmd->pipeOut);
 
     // if the command is the start of a pipe
     if (cmd->pipeIn == 1) {
         prevPipe[0] = currPipe[0];
         prevPipe[1] = currPipe[1];
         if (pipe(currPipe) == -1) {printf("pipe error\n"); exit(-1);}
-        printf("pipeIn new : currPipe[0]:%i, currPipe[1]:%i\n", currPipe[0], currPipe[1]);
-        printf("pipeIn old : currPipe[0]:%i, currPipe[1]:%i\n", prevPipe[0], prevPipe[1]);
+        //printf("pipeIn new : currPipe[0]:%i, currPipe[1]:%i\n", currPipe[0], currPipe[1]);
+        //printf("pipeIn old : currPipe[0]:%i, currPipe[1]:%i\n", prevPipe[0], prevPipe[1]);
     }
 
     if ((childpid = fork()) == -1) {
@@ -87,6 +87,7 @@ int execute_command(command *cmd) {
             dup2(currPipe[1], STDOUT_FILENO); // printf now writes to the write end of the pipe
             //printf("pipeIn == 1 : currPipe[0]:%i, currPipe[1]:%i\n", currPipe[0], currPipe[1]);
 
+            // not needed
             close(currPipe[0]); // Close the read-end, not needed here
             close(currPipe[1]);
             close(prevPipe[0]);
@@ -103,14 +104,13 @@ int execute_command(command *cmd) {
             close(currPipe[1]);
             close(prevPipe[0]);
             close(prevPipe[1]);
-
-            printf("pipeOut == 1  :  currPipe[0]:%i, currPipe[1]:%i\n", currPipe[0], currPipe[1]);
         }
         // cmd between pipes
         if (cmd->pipeIn == 1 && cmd->pipeOut == 1) {
             dup2(prevPipe[0], STDIN_FILENO); // Redirect stdin from prevPipe read end
             dup2(currPipe[1], STDOUT_FILENO); // Redirect stdout to currPipe write end
 
+            // not needed
             close(currPipe[1]); // Close unused write end
             close(currPipe[0]); // Close after dup2
             close(prevPipe[0]); // Close unused read end
@@ -146,23 +146,35 @@ int execute_command(command *cmd) {
     }
     // only in parent
 
-    // done writing to the write end of the pipe
-    if (cmd->pipeIn == 1) { 
+    // before a pipe
+    if (cmd->pipeIn == 1 && cmd->pipeOut == 0) { 
         close(currPipe[1]);
-        printf("pipeIn == 1  :  close currPipe[1]:%i\n", currPipe[1]);
+        //printf("pipeIn : close currPipe[1]:%i\n", currPipe[1]);
+    } else
+    // after a pipe
+    if (cmd->pipeIn == 0 && cmd->pipeOut == 1) { 
+        close(currPipe[0]);
+        close(currPipe[1]);
+        close(prevPipe[0]);
+        close(prevPipe[1]);
+        //printf("pipeOut : close all currPipe{%i,%i}, prevPipe{%i,%i}\n", currPipe[0],currPipe[1],prevPipe[0],prevPipe[1]);
+    } else
+    // middle of a pipe
+    if (cmd->pipeIn == 1 && cmd->pipeOut == 1) {
+        close(prevPipe[0]);
+        close(currPipe[1]);        
+        //printf("pipeOut && pipeIn : close prevPipe[0]:%i, currPipe[1]:%i\n", prevPipe[0], currPipe[1]);
     }
 
     if (wait(&status) == -1){
         perror("Error waiting for child:");
         return -1;
     }
-    //
     if(!WIFEXITED(status) && WEXITSTATUS(status) != 0){
         printf("error with child process:");
         perror("::");
         return -1;
     }
-
 
     return 1;
 }
