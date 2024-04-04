@@ -48,7 +48,8 @@ int check_command(command *cmd) {
 }
 
 
-int p[2];
+int currPipe[2]={-1,-1};
+int prevPipe[2]={-1,-1};
 
 /**
  * take a pointer to a command struct
@@ -62,11 +63,15 @@ int execute_command(command *cmd) {
     int childpid;
     int status;
 
+    printf("\npipeIn:%i pipeOut:%i\n", cmd->pipeIn, cmd->pipeOut);
 
     // if the command is the start of a pipe
-    if (cmd->type==1) {
-        if (pipe(p) == -1) {printf("pipe error\n"); exit(-1);}
-        printf("p[0]:%i, p[1]:%i\n", p[0], p[1]);
+    if (cmd->pipeIn == 1) {
+        prevPipe[0] = currPipe[0];
+        prevPipe[1] = currPipe[1];
+        if (pipe(currPipe) == -1) {printf("pipe error\n"); exit(-1);}
+        printf("pipeIn new : currPipe[0]:%i, currPipe[1]:%i\n", currPipe[0], currPipe[1]);
+        printf("pipeIn old : currPipe[0]:%i, currPipe[1]:%i\n", prevPipe[0], prevPipe[1]);
     }
 
     if ((childpid = fork()) == -1) {
@@ -76,25 +81,40 @@ int execute_command(command *cmd) {
         
     } else if (childpid == 0) {
         // only in child
-        printf("cmd type:%i\n", cmd->type);
-        // cmd before the pipe
-        if (cmd->type==1) {
-            close(p[0]); // Close the read-end, not needed here
-            dup2(p[1], STDOUT_FILENO); // printf now writes to the write end of the pipe
-            //printf("dup2 type 1: p[0]:%i, p[1]:%i\n", p[0], p[1]);
-        }
 
+        // cmd before the pipe
+        if (cmd->pipeIn == 1 && cmd->pipeOut == 0) {
+            dup2(currPipe[1], STDOUT_FILENO); // printf now writes to the write end of the pipe
+            //printf("pipeIn == 1 : currPipe[0]:%i, currPipe[1]:%i\n", currPipe[0], currPipe[1]);
+
+            close(currPipe[0]); // Close the read-end, not needed here
+            close(currPipe[1]);
+            close(prevPipe[0]);
+            close(prevPipe[1]);
+        }
         // cmd after the pipe
-        if (cmd->type==2) {
-            // close the write end of the pipe since it isnt needed
-            close(p[1]);
+        if (cmd->pipeIn == 0 && cmd->pipeOut == 1) {
 
             // redirect stdin to the read end of the pipe
-            dup2(p[0], STDIN_FILENO);
+            dup2(currPipe[0], STDIN_FILENO);
 
             // No longer needed after dup2
-            close(p[0]); 
-            printf("dup2 type 2: p[0]:%i, p[1]:%i\n", p[0], p[1]);
+            close(currPipe[0]); 
+            close(currPipe[1]);
+            close(prevPipe[0]);
+            close(prevPipe[1]);
+
+            printf("pipeOut == 1  :  currPipe[0]:%i, currPipe[1]:%i\n", currPipe[0], currPipe[1]);
+        }
+        // cmd between pipes
+        if (cmd->pipeIn == 1 && cmd->pipeOut == 1) {
+            dup2(prevPipe[0], STDIN_FILENO); // Redirect stdin from prevPipe read end
+            dup2(currPipe[1], STDOUT_FILENO); // Redirect stdout to currPipe write end
+
+            close(currPipe[1]); // Close unused write end
+            close(currPipe[0]); // Close after dup2
+            close(prevPipe[0]); // Close unused read end
+            close(prevPipe[1]); // Close after dup2
         }
 
 
@@ -127,9 +147,9 @@ int execute_command(command *cmd) {
     // only in parent
 
     // done writing to the write end of the pipe
-    if (cmd->type==1) { 
-        close(p[1]);
-        printf("type 1: close p[1]\n");
+    if (cmd->pipeIn == 1) { 
+        close(currPipe[1]);
+        printf("pipeIn == 1  :  close currPipe[1]:%i\n", currPipe[1]);
     }
 
     if (wait(&status) == -1){
