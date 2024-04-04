@@ -124,7 +124,7 @@ int execute_command(command *cmd) {
         {
             int cmdSize = strlen(cmd->words[0]) + strlen(bins[binIndex]) + 1;
             char *cmdDir = malloc((char)cmdSize);
-            if (cmdDir == NULL) {perror("Buf wasn't allocated"); exit(EXIT_FAILURE);}
+            if (cmdDir == NULL) {perror("cmd dir wasn't allocated"); exit(EXIT_FAILURE);}
 
             // add the current commands first word to the end of the path to search
             // basically cmdDir = bins[i] + cmdWords[0]; => cmdDir = "/usr/bin/" + "echo"; => cmdDir = "/usr/bin/echo";
@@ -142,7 +142,7 @@ int execute_command(command *cmd) {
         }
         // command wasn't found, but no error
         printf("Command \'%s\' not found.\n", cmd->words[0]);
-        return 1;
+        exit(EXIT_FAILURE);
     }
     // only in parent
 
@@ -166,15 +166,28 @@ int execute_command(command *cmd) {
         //printf("pipeOut && pipeIn : close prevPipe[0]:%i, currPipe[1]:%i\n", prevPipe[0], currPipe[1]);
     }
 
-    if (wait(&status) == -1){
-        perror("Error waiting for child:");
+
+    // status is set to 1 on failure and 0 on success
+    if (waitpid(childpid, &status, 0) == -1) {
+        perror("Error waiting for child");
         return -1;
     }
-    if(!WIFEXITED(status) && WEXITSTATUS(status) != 0){
-        printf("error with child process:");
-        perror("::");
+
+
+    if ( WIFEXITED(status) )
+    {
+        int exit_status = WEXITSTATUS(status);        
+        printf("Exit status of the child was %d\n", 
+                                     exit_status);
+                                     
+        cmd->exitStatus=exit_status;
+    } else
+    if (!WIFEXITED(status) && WEXITSTATUS(status) != 0){
+        perror("error with child process:");
         return -1;
     }
+
+     
 
     return 1;
 }

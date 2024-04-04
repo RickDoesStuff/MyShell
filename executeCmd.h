@@ -12,11 +12,12 @@
 
 
 typedef struct command{
-    int type; // type of command, 0 - normal, 1 - pipe, WIP (THEN ELSE < >)
+    int type; // type of command, 0 - normal, 1 - pipe, 2 - then, 3 - else, WIP (THEN ELSE < >)
     int pipeIn; // 0 - no, 1 - yes, it pipes into a command (its on the left side of a pipe (HERE | ...)) 
     int pipeOut; // 0 - no, 1 - yes, it pipes out of a command (its on the right side of a pipe (... | HERE))
     int size; // how many words allocated 
     int length; // how many words in command
+    int exitStatus; // exit status of previous command
     char **words; // an array of words
 } command;
 

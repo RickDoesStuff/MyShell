@@ -67,6 +67,14 @@ int resetCommand(command *cmd) {
  */
 int runCommand(command *cmd) {
 
+    // then || else
+    if ((cmd->type==2 && cmd->exitStatus == 1) || (cmd->type==3 && cmd->exitStatus == 0)) {
+        // dont execute
+        // false then
+        // or
+        // true else
+        return 1;
+    }
     // get the return code from check_command
     // checks the command against our built in functions then tries to execute using execv
     int execCmdRetCode = check_command(cmd);
@@ -132,7 +140,6 @@ int terminalStream(char ***wordArr, int *wordCount) {
 
         // if pipe
         if (strcmp((*wordArr)[index],"|") == 0 ||
-            strcmp((*wordArr)[index],"if") == 0 ||
             strcmp((*wordArr)[index],"then") == 0 ||
             strcmp((*wordArr)[index],"else") == 0
             )
@@ -152,11 +159,20 @@ int terminalStream(char ***wordArr, int *wordCount) {
             }
             // run cmd
             resetCommand(&cmd);
+            // done running current command
             
             // setup next command of the pipe
             if (strcmp((*wordArr)[index],"|") == 0) {
                 cmd.pipeIn = 0; // next command is unknown if passing into a pipe so we reset
                 cmd.pipeOut = 1; // next command is taking from a pipe
+            }
+
+            // setup the next command as a command that should check the exit status of the current command that just ran
+            if (strcmp((*wordArr)[index],"then") == 0) {
+                cmd.type=2;
+            }
+            if (strcmp((*wordArr)[index],"else") == 0) {
+                cmd.type=3;
             }
 
             // free the special word
