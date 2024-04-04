@@ -1,7 +1,7 @@
 #include "terminalstream.h"
 #include "mysh.h"
 
-int interactiveMode(char *path);
+int interactiveMode(char *path, int interactive);
 
 int main(int argc, char **argv) {
     int interactive = 1; // set interactive mode true by default
@@ -23,28 +23,39 @@ int main(int argc, char **argv) {
 
 
         // check if that file is a tty or a batch file
-        if (isatty(STDOUT_FILENO) == 1) {
+        if (isatty(fd) == 1) {
             
             // it is a tty
-            DEBUG printf("running in interactive mode, given terminal path\n");
+            printf("running in interactive mode, given terminal path\n");
 
             // here I may need to change the output from the current terminal to the terminal I was given
             //if (dup2(fd, STDOUT_FILENO) < 0) {perror("Failed to dup");}
 
         } else {
             // is not a tty
-            DEBUG printf("running in batch mode\n");
+            printf("running in batch mode\n");
             interactive = 0;
 
         }
     } else {
         // no path given, running in current terminal?
+        // check if stdin is a terminal or being piped
+        if (isatty(STDIN_FILENO) == 1) 
+        {
+            // it is a terminal
+            printf("is a terminal\n");
+            interactive = 1;
+        } else {
+            // it is not a terminal
+            printf("not a terminal\n");
+            interactive = 0;
+        }
         DEBUG printf("running in interactive mode, no path given\n");
     }
 
     // if its being run in interactive mode
     if (interactive) {
-        interactiveMode(path);
+        interactiveMode(path, interactive);
     }
 
 }
@@ -54,16 +65,14 @@ int main(int argc, char **argv) {
  * return 0 on fail
  * return 1 on success
 */
-int interactiveMode(char *path) {
+int interactiveMode(char *path, int interactive) {
 
-    int pipeFD = open("./pipeFD", O_CREAT, O_CREAT, O_RDWR, 0777);
-    if (pipeFD==-1){
-        perror("open error:");
-        exit(EXIT_FAILURE);
+    //int pipeFD = open("./pipeFD", O_WRONLY);
+
+    if (interactive == 1) {
+        printf("\n\nWelcome to mysh\n\n");
     }
 
-    printf("\n\nWelcome to mysh\n\n");
-    
     int isRunning = 1;        
 
     while (isRunning) 
@@ -71,10 +80,12 @@ int interactiveMode(char *path) {
 
         // maybe move these inside of terminal Stream?? idea?
         int wordCount = 0;
-        char **wordArr=NULL;
+        char **wordArr=NULL;   
 
-        printf("\nmysh> ");
-        fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
+        if (interactive == 1) {
+            printf("\nmysh> ");
+            fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
+        }
 
         // read in from the terminal
         int termStreamRetCode = terminalStream(&wordArr, &wordCount);
@@ -82,8 +93,7 @@ int interactiveMode(char *path) {
         // check if error
         if(termStreamRetCode == -1) {
             printf("Terminal Stream Error\n");
-            //freeArr(&wordArr, &wordCount);
-            
+
             free(wordArr);
             exit(EXIT_FAILURE);
         }
@@ -96,31 +106,12 @@ int interactiveMode(char *path) {
             continue;
         }
         // terminalStream was sucessfull
-
         // get next command
-        //printf("calling free at end;3\n");
-        //freeArr(&wordArr, &wordCount);
+
         free(wordArr);
         continue;
     }
 
     printf("\nmysh: exiting\n");
     return 0;
-}
-
-
-int freeArr(char ***wordArr, int *wordCount) { 
-    if (wordArr == NULL || *wordArr == NULL) return 0; // Nothing to free
-    
-    for (int i = 0; i < *wordCount; i++) {
-        if ((*wordArr)[i] == NULL) {
-            continue;
-        }
-        printf("freeing: \'%s\'\n",(*wordArr)[i]);
-        free((*wordArr)[i]);
-        (*wordArr)[i] = NULL; // prevent dangling pointer
-    }
-    free(*wordArr);
-    *wordArr = NULL; // Prevent dangling pointer at the top level
-    return 1; // Success
 }

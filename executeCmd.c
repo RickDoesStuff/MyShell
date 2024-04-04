@@ -1,13 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <ctype.h>
-#include <sys/wait.h>
-
 #include "executeCmd.h"
-
-
 
 /**
  * takes a pointer to a command struct
@@ -25,7 +16,6 @@ int check_command(command *cmd) {
     // Exit command
     if (strcmp(cmd->words[0],"exit") == 0 && cmd->length == 1) {
         // Exiting the program!
-        // printf("**exit typed!**\n");
         return 0;
     }
     // PWD command
@@ -54,17 +44,11 @@ int check_command(command *cmd) {
         return 1;
     }
     // not a built in command, so try to execute it
-
     return execute_command(cmd);
-
-    // if (execute_command(cmd) == -1) {
-    //     // error happened
-    //     return -1;
-    // } else {
-
-    // }
-    // return 1;
 }
+
+
+int p[2];
 
 /**
  * take a pointer to a command struct
@@ -77,7 +61,14 @@ int execute_command(command *cmd) {
     int binCount = 4;
     int childpid;
     int status;
-    
+
+
+    // if the command is the start of a pipe
+    if (cmd->type==1) {
+        if (pipe(p) == -1) {printf("pipe error\n"); exit(-1);}
+        printf("p[0]:%i, p[1]:%i\n", p[0], p[1]);
+    }
+
     if ((childpid = fork()) == -1) {
         // fork failed
         perror("Can't fork:");
@@ -85,6 +76,28 @@ int execute_command(command *cmd) {
         
     } else if (childpid == 0) {
         // only in child
+        printf("cmd type:%i\n", cmd->type);
+        // cmd before the pipe
+        if (cmd->type==1) {
+            close(p[0]); // Close the read-end, not needed here
+            dup2(p[1], STDOUT_FILENO); // printf now writes to the write end of the pipe
+            //printf("dup2 type 1: p[0]:%i, p[1]:%i\n", p[0], p[1]);
+        }
+
+        // cmd after the pipe
+        if (cmd->type==2) {
+            // close the write end of the pipe since it isnt needed
+            close(p[1]);
+
+            // redirect stdin to the read end of the pipe
+            dup2(p[0], STDIN_FILENO);
+
+            // No longer needed after dup2
+            close(p[0]); 
+            printf("dup2 type 2: p[0]:%i, p[1]:%i\n", p[0], p[1]);
+        }
+
+
 
         // search through each given bin in *bins[]
         for (int binIndex = 0; binIndex < binCount; binIndex++)
@@ -111,7 +124,14 @@ int execute_command(command *cmd) {
         printf("Command \'%s\' not found.\n", cmd->words[0]);
         return 1;
     }
-    // only in parrent
+    // only in parent
+
+    // done writing to the write end of the pipe
+    if (cmd->type==1) { 
+        close(p[1]);
+        printf("type 1: close p[1]\n");
+    }
+
     if (wait(&status) == -1){
         perror("Error waiting for child:");
         return -1;

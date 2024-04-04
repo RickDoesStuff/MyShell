@@ -1,10 +1,5 @@
 // for reading in from a terminal, given or current
 #include "terminalstream.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <ctype.h>
 
 
 
@@ -153,6 +148,10 @@ int terminalStream(char ***wordArr, int *wordCount) {
                 return runCmdRetCode;
             }
             resetCommand(&cmd);
+            
+            if (cmd.type == 1) {
+                cmd.type++;
+            }
             // run was successful
             // printf("pipe found\n");
 
@@ -209,7 +208,7 @@ int terminalStream(char ***wordArr, int *wordCount) {
  * return 0 on user didnt type anything and just hit enter
  * return -1 on error
 */
-int readWordsIntoArray(char ***arr, int *wordCount){
+int readWordsIntoArray(char ***arr, int *wordCount) {
 
     int allocatedWordAmt = 5; // amt of words allocated for the current command line
     
@@ -327,7 +326,7 @@ int readWordsIntoArray(char ***arr, int *wordCount){
                 // current char is a pipe
                 else if (chr == '|') {
                     // end current word
-                    if (wordLen > 0) {
+                    if (wordLen > 0) { // echo hi |
                         // pipe comes after a letter
                         // printf("End current word\n");
                         (*arr)[currentWord][wordLen] = '\0'; // Null-terminate
@@ -356,13 +355,11 @@ int readWordsIntoArray(char ***arr, int *wordCount){
                     (*arr)[currentWord][wordLen] = chr; // Append character
                     (*arr)[currentWord][wordLen + 1] = '\0'; // Null-terminate
                     wordLen++;
-                    //printf("wordLen:%i\n",wordLen);
                     // echo hi | echo hello
                 }
             }
         } else {
             // no bytes to read
-            //printf("no bytes to read\n");
             // hit enter before data was read
             free(buf);
             return 0;
