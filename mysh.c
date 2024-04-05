@@ -1,7 +1,10 @@
-#include "terminalstream.h"
+#include "linestream.h"
 #include "mysh.h"
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
 
-int interactiveMode(char *path, int interactive);
+int runningMode(int interactive);
 
 int main(int argc, char **argv) {
     int interactive = 1; // set interactive mode true by default
@@ -9,63 +12,65 @@ int main(int argc, char **argv) {
 
     DEBUG printf("argc:%i\n",argc);
 
-    // check if a 2nd arg (file path) is given
     if (argc >= 2) {
-        
         DEBUG printf("arg found:%s\n",argv[1]);
-        path = (char *)(argv[1]);
+        path = argv[1];
 
-        // open file given
-        int fd = open(path,O_RDONLY);
-
-
-        if (fd < 0) {printf("error opening file: %s\n",path);}
-
-
-        // check if that file is a tty or a batch file
-        if (isatty(fd) == 1) {
-            
-            // it is a tty
-            printf("running in interactive mode, given terminal path\n");
-
-            // here I may need to change the output from the current terminal to the terminal I was given
-            //if (dup2(fd, STDOUT_FILENO) < 0) {perror("Failed to dup");}
-
-        } else {
-            // is not a tty
-            printf("running in batch mode\n");
-            interactive = 0;
-
+        // Open file given
+        int fd = open(path, O_RDONLY);
+        if (fd < 0) {
+            printf("Error opening file: %s\n", path);
+            return 1; // Return with error code
         }
+
+        // Redirect stdin to read from the file
+        if (dup2(fd, STDIN_FILENO) < 0) {
+            perror("Failed to redirect stdin");
+            close(fd); // Close the file descriptor if redirection fails
+            return 1; // Return with error code
+        }
+
+        // Set the application to run in batch mode
+        printf("Running in batch mode\n");
+        interactive = 0;
+
+        // Since we've redirected stdin, there's no need to check if it's a tty
     } else {
-        // no path given, running in current terminal?
-        // check if stdin is a terminal or being piped
-        if (isatty(STDIN_FILENO) == 1) 
-        {
-            // it is a terminal
-            printf("is a terminal\n");
+        // No path given, check if stdin is a terminal or being piped
+        if (isatty(STDIN_FILENO)) {
+            printf("Is a terminal\n");
             interactive = 1;
         } else {
-            // it is not a terminal
-            printf("not a terminal\n");
+            printf("Not a terminal\n");
             interactive = 0;
         }
-        DEBUG printf("running in interactive mode, no path given\n");
+        DEBUG printf("Running in interactive mode, no path given\n");
     }
 
-    // if its being run in interactive mode
+    // Run in interactive mode
     if (interactive) {
-        interactiveMode(path, interactive);
+        runningMode(interactive);
+    } else {
+        // For batch mode, you might want to call a similar function here that handles batch operations
+        // For simplicity, we'll just call interactiveMode with interactive set to 0
+        runningMode(interactive);
     }
 
+    // Cleanup if a file was opened
+    if (argc >= 2) {
+        close(STDIN_FILENO); // It's a good practice to close the duplicated file descriptor
+    }
+
+    return 0;
 }
 
 /**
- * Being run in interactive mode
+ * Running the shell
+ * int interactive, 1 - interactive, 2 - batch
  * return 0 on fail
  * return 1 on success
 */
-int interactiveMode(char *path, int interactive) {
+int runningMode(int interactive) {
 
     //int pipeFD = open("./pipeFD", O_WRONLY);
 
@@ -75,7 +80,7 @@ int interactiveMode(char *path, int interactive) {
 
     int isRunning = 1;        
 
-    while (isRunning) 
+    while ((interactive && isRunning) || (!interactive && !feof(stdin))) 
     {
 
         // maybe move these inside of terminal Stream?? idea?
@@ -84,24 +89,26 @@ int interactiveMode(char *path, int interactive) {
 
         if (interactive == 1) {
             printf("\nmysh> ");
-            fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
         }
+        fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
+
+        
 
         // read in from the terminal
         
         // setup the command struct and initialize it
         command cmd;
-        int termStreamRetCode = terminalStream(&wordArr, &wordCount, &cmd);
-
+        int linestreamReturnCode = linestream(&wordArr, &wordCount, &cmd, interactive);
+        
         // check if error
-        if(termStreamRetCode == -1) {
+        if(linestreamReturnCode == -1) {
             printf("Terminal Stream Error\n");
 
             free(wordArr);
             exit(EXIT_FAILURE);
         }
         // check if user wants to exit
-        else if(termStreamRetCode == 0) {
+        else if(linestreamReturnCode == 0) {
             //printf("calling free at exit;2\n");
             //freeArr(&wordArr, &wordCount);
             free(wordArr);
@@ -109,13 +116,24 @@ int interactiveMode(char *path, int interactive) {
             continue;
         }
         // terminalStream was sucessfull
-        // get next command
-
-        //freeWords(&cmd);
         free(wordArr);
+
+        // batch file read, exiting
+        if (!interactive)
+        {
+            printf("closing stdin\n");
+            close(STDIN_FILENO); // It's a good practice to close the duplicated file descriptor
+            isRunning = 0;
+            break;
+        }else{
+            //printf("not eof\n");
+        }
+
         continue;
     }
 
-    printf("\nmysh: exiting\n");
+    if (interactive == 1){
+        printf("\nmysh: exiting\n");
+    }
     return 0;
 }

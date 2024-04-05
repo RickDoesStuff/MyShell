@@ -296,8 +296,7 @@ int execute_command(command *cmd) {
     if ( WIFEXITED(status) )
     {
         int exit_status = WEXITSTATUS(status);        
-        printf("Exit status of the child was %d\n", 
-                                     exit_status);
+        printf("Exit status of the child was %d\n", exit_status);
                                      
         cmd->exitStatus=exit_status;
     } else
