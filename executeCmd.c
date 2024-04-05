@@ -8,6 +8,8 @@ int wildcardExpansion(command *cmd) {
     for (int i = 0; i < cmd->length; i++) {
         if (strpbrk(cmd->words[i], "*") != NULL) { // Check for wildcard characters
             glob_t glob_result;
+
+            // init and alloc the glob_result to 0s
             memset(&glob_result, 0, sizeof(glob_result));
             
             if (glob(cmd->words[i], GLOB_NOCHECK, NULL, &glob_result) == 0) {
