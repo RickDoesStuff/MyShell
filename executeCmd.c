@@ -189,6 +189,41 @@ int execute_command(command *cmd) {
             // successfully changed directories
             exit(EXIT_SUCCESS);
         }
+        // which command
+        else if (strcmp(cmd->words[0], "which") == 0) {
+            if (cmd->length != 2) {
+                // wrong amt of words | only accepts "which path"
+                printf("wrong amt of args\n");
+                exit(EXIT_SUCCESS);
+            } else {
+                // search through each given bin in *bins[]
+                for (int binIndex = 0; binIndex < binCount-1; binIndex++)
+                {
+                    int cmdSize = strlen(cmd->words[1]) + strlen(bins[binIndex]) + 1;
+                    char *cmdDir = malloc((char)cmdSize);
+                    if (cmdDir == NULL) {perror("cmd dir wasn't allocated"); exit(EXIT_FAILURE);}
+
+                    // add the current commands first word to the end of the path to search
+                    // basically cmdDir = bins[i] + cmdWords[0]; => cmdDir = "/usr/bin/" + "echo"; => cmdDir = "/usr/bin/echo";
+                    snprintf(cmdDir,cmdSize,"%s%s",bins[binIndex],cmd->words[1]);
+
+                    // check if the file exists in a directory
+                    if (access(cmdDir, F_OK | X_OK) == 0) { 
+                        // success
+                        printf("%s\n",cmdDir);
+                        free(cmdDir);
+                        exit(EXIT_SUCCESS);
+                    }
+
+                    free(cmdDir);
+                }
+                // command wasn't found, but no error
+                printf("Command \'%s\' not found.\n", cmd->words[0]);
+                exit(EXIT_FAILURE);
+            }
+            // successfully changed directories
+            exit(EXIT_SUCCESS);
+        }
 
         // search through each given bin in *bins[]
         for (int binIndex = 0; binIndex < binCount; binIndex++)
@@ -202,12 +237,15 @@ int execute_command(command *cmd) {
             snprintf(cmdDir,cmdSize,"%s%s",bins[binIndex],cmd->words[0]);
 
             //printf("\nSearching:%s\n",cmdDir);
-
-            if (execv(cmdDir, cmd->words) != -1) {
-                // success
-                free(cmdDir);
-                exit(EXIT_SUCCESS);
-            }
+            if (access(cmdDir, F_OK | X_OK) == 0) { 
+                // command was found and is executable
+                if (execv(cmdDir, cmd->words) != -1) {
+                    // success
+                    free(cmdDir);
+                    exit(EXIT_SUCCESS);
+                }
+            } 
+            // command wasnt found
 
             free(cmdDir);
         }
