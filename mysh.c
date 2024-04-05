@@ -111,6 +111,7 @@ int interactiveMode(char *path, int interactive) {
         // terminalStream was sucessfull
         // get next command
 
+        //freeWords(&cmd);
         free(wordArr);
         continue;
     }

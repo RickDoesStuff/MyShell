@@ -1,5 +1,53 @@
 #include "executeCmd.h"
 
+
+/**
+ * Expand wildcards in a command struct
+*/
+int wildcardExpansion(command *cmd) {
+    for (int i = 0; i < cmd->length; i++) {
+        if (strpbrk(cmd->words[i], "*") != NULL) { // Check for wildcard characters
+            glob_t glob_result;
+            memset(&glob_result, 0, sizeof(glob_result));
+            
+            if (glob(cmd->words[i], GLOB_NOCHECK, NULL, &glob_result) == 0) {
+
+                int newLength = cmd->length + glob_result.gl_pathc - 1; // Adjust for replacement
+                
+                if (newLength > cmd->size) {
+                    char **newWords = realloc(cmd->words, newLength * sizeof(char *));
+                    if (newWords == NULL) {
+                        perror("Failed to realloc cmd->words");
+                        exit(EXIT_FAILURE);
+                    }
+                    cmd->words = newWords;
+                    cmd->size = newLength;
+                }
+                
+                // Free the original wildcard string to prevent a memory leak
+                free(cmd->words[i]);
+                
+                // Shift existing elements if necessary, starts at the end of the word list and moves back up to the wildcard currently being expanded
+                for (int j = cmd->length - 1; j > i; j--) {
+                    cmd->words[j + glob_result.gl_pathc - 1] = cmd->words[j];
+                }
+                
+                // Insert new paths
+                for (size_t j = 0; j < glob_result.gl_pathc; j++) {
+                    cmd->words[i + j] = strdup(glob_result.gl_pathv[j]);
+                }
+                
+                // Update the loop counter and the command length
+                i += glob_result.gl_pathc - 1;
+                cmd->length = newLength;
+            }
+            
+            globfree(&glob_result);
+        }
+    }
+    return 1;
+}
+
 /**
  * takes a pointer to a command struct
  * checks the command against our built in functions then tries to execute using execv
@@ -8,42 +56,22 @@
  * return 1 success, valid, invalid or no command given but functioned as expected
 */
 int check_command(command *cmd) {
+
     if (cmd->words == NULL || cmd->words[0] == NULL){
         // word is null, error
         return -1;
     }
+       
+    // where I need to handle the * wildcard
+    wildcardExpansion(cmd);
 
     // Exit command
     if (strcmp(cmd->words[0],"exit") == 0 && cmd->length == 1) {
         // Exiting the program!
         return 0;
     }
-    // PWD command
-    else if (strcmp(cmd->words[0], "pwd") == 0) {
-        char cwd[1024];
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
-            printf("%s\n", cwd);
-        } else {
-            perror("pwd failed");
-            return -1;
-        }
-        return 1;
-    }
-    // CD command
-    else if (strcmp(cmd->words[0], "cd") == 0) {
-        if (cmd->words[1] == NULL) {
-            printf("No directory given\n");
-            return 1;
-        } else {
-            if (chdir(cmd->words[1]) != 0) {
-                perror("cd failed");
-                return -1;
-            }
-        }
-        // successfully changed directories
-        return 1;
-    }
-    // not a built in command, so try to execute it
+
+    // try to execute it now with built in commands and execv commands
     return execute_command(cmd);
 }
 
@@ -133,11 +161,32 @@ int execute_command(command *cmd) {
             close(prevPipe[1]); // Close after dup2
         }
 
-
-
-
-    // move all the built in commands to here at some point
-
+         
+        // PWD command
+        if (strcmp(cmd->words[0], "pwd") == 0) {
+            char cwd[1024];
+            if (getcwd(cwd, sizeof(cwd)) != NULL) {
+                printf("%s\n", cwd);
+            } else {
+                perror("pwd failed");
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+        // CD command
+        else if (strcmp(cmd->words[0], "cd") == 0) {
+            if (cmd->words[1] == NULL) {
+                printf("No directory given\n");
+                exit(EXIT_SUCCESS);
+            } else {
+                if (chdir(cmd->words[1]) != 0) {
+                    perror("cd failed");
+                    exit(EXIT_FAILURE);
+                }
+            }
+            // successfully changed directories
+            exit(EXIT_SUCCESS);
+        }
 
         // search through each given bin in *bins[]
         for (int binIndex = 0; binIndex < binCount; binIndex++)

@@ -17,7 +17,7 @@ int freeWords(command *cmd) {
         cmd->words[i] = NULL;
     }
     //printf("\n");
-    if (cmd->words != NULL){
+    if (cmd->words != NULL) {
         free(cmd->words);
     }
     return 1;
