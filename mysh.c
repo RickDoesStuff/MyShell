@@ -88,7 +88,7 @@ int runningMode(int interactive) {
         char **wordArr=NULL;   
 
         if (interactive == 1) {
-            printf("\nmysh> ");
+            printf("mysh> ");
         }
         fflush(stdout); // flush the stdout that way the mysh> gets printed before it starts looking for out input
 
@@ -101,7 +101,7 @@ int runningMode(int interactive) {
         int linestreamReturnCode = linestream(&wordArr, &wordCount, &cmd, interactive);
         
 
-        printf("redIn:%i    redOut:%i\n",cmd.redirectIn,cmd.redirectOut);
+        //printf("redIn:%i    redOut:%i\n",cmd.redirectIn,cmd.redirectOut);
         if (cmd.redirectIn != -1)
         {
             close(cmd.redirectIn);
@@ -122,12 +122,12 @@ int runningMode(int interactive) {
         }
         // check if user wants to exit
         else if(linestreamReturnCode == 0) {
-            printf("going to free up to %i words\n", wordCount);
+            //printf("going to free up to %i words\n", wordCount);
             if (cmd.lastWordsIndex > -1) {
                 for (int i = cmd.lastWordsIndex ; i < wordCount ; i++){
 
                     if (wordArr[i] != NULL) {
-                        printf("in main freeing: %s\n",wordArr[i]);
+                        //printf("in main freeing: %s\n",wordArr[i]);
                         free(wordArr[i]);
                         wordArr[i] = NULL;
                     }
@@ -140,13 +140,13 @@ int runningMode(int interactive) {
         // linestream interactive was sucessfull
 
 
-        printf("going to free up to %i words starting at %i\n", wordCount, cmd.lastWordsIndex);
+        //printf("going to free up to %i words starting at %i\n", wordCount, cmd.lastWordsIndex);
 
         if (cmd.lastWordsIndex > -1) {
             for (int i = cmd.lastWordsIndex; i < wordCount ; i++){
 
                 if (wordArr[i] != NULL) {
-                    printf("in main freeing: %s\n",wordArr[i]);
+                    //printf("in main freeing: %s\n",wordArr[i]);
                     free(wordArr[i]);
                     wordArr[i] = NULL;
                 }
@@ -157,7 +157,7 @@ int runningMode(int interactive) {
         // batch file read, exiting
         if (!interactive)
         {
-            printf("closing stdin\n");
+            //printf("closing stdin\n");
             close(STDIN_FILENO); // It's a good practice to close the duplicated file descriptor
             isRunning = 0;
             break;

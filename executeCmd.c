@@ -198,7 +198,7 @@ int execute_command(command *cmd) {
         else if (strcmp(cmd->words[0], "which") == 0) {
             if (cmd->length != 2) {
                 // wrong amt of words | only accepts "which path"
-                printf("wrong amt of args\n");
+                printf("Wrong amount of arguments, expected exactly one.\n");
                 exit(EXIT_SUCCESS);
             } else {
                 // search through each given bin in *bins[]
@@ -301,7 +301,7 @@ int execute_command(command *cmd) {
     if ( WIFEXITED(status) )
     {
         int exit_status = WEXITSTATUS(status);        
-        printf("Exit status of the child was %d\n", exit_status);
+        //printf("Exit status of the child was %d\n", exit_status);
                                      
         cmd->exitStatus=exit_status;
     } else
