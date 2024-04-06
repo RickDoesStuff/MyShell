@@ -68,8 +68,13 @@ int check_command(command *cmd) {
     wildcardExpansion(cmd);
 
     // Exit command
-    if (strcmp(cmd->words[0],"exit") == 0 && cmd->length == 1) {
-        // Exiting the program!
+    if (strcmp(cmd->words[0],"exit") == 0) {
+        if (cmd->length > 1){
+            for (int i = 1; i < cmd->length; i++) {
+                printf("%s ",cmd->words[i]);
+            }
+            printf("\n");
+        }
         return 0;
     }
 

@@ -19,6 +19,7 @@ int freeWords(command *cmd) {
     //printf("\n");
     if (cmd->words != NULL) {
         free(cmd->words);
+        cmd->words = NULL;
     }
     return 1;
 }
@@ -45,6 +46,7 @@ int initCommand(command *cmd) {
     cmd->pipeOut = 0;
     cmd->redirectIn = -1;
     cmd->redirectOut = -1;
+    cmd->lastWordsIndex = -1;
     mallocWords(cmd);
     return 1;
 }
@@ -118,7 +120,7 @@ int runCommand(command *cmd) {
 */
 int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
     
-    int retError=readWordsIntoArray(wordArr, wordCount,interactive);
+    int retError=readWordsIntoArray(wordArr, wordCount, interactive);
 
     // check if we could read words into the array
     if (retError == -1) {
@@ -129,7 +131,7 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
         // typed nothing and just hit enter
         return 1;
     }
-    
+    printf("**Word Count: %i\n",*wordCount);
     //printf("checking word arr\n");
     //for (int i = 0; i < *wordCount; i++){
     //    printf("word: %s\n", (*wordArr)[i]);
@@ -151,11 +153,33 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
             break;
         }
         
+            // else and then should only be checked if they are the first word in a line
+            if (cmd->length == 0) {
+                // setup the next command as a command that should check the exit status of the current command that just ran
+                if (strcmp((*wordArr)[index],"then") == 0) {
+                    printf("cmd length then:%i\n",cmd->length);
+                    cmd->type=2;
+                    // free the special word
+                    printf("  special word:'%s'\n",(*wordArr)[index]);
+                    free((*wordArr)[index]);
+                    (*wordArr)[index] = NULL;
+                    continue;
+                }
+                // setup the next command as a command that should check the exit status of the current command that just ran
+                if (strcmp((*wordArr)[index],"else") == 0) {
+                    printf("cmd length else:%i\n",cmd->length);
+                    cmd->type=3;
 
-        // if pipe
+                    // free the special word
+                    printf("  special word:'%s'\n",(*wordArr)[index]);
+                    free((*wordArr)[index]);
+                    (*wordArr)[index] = NULL;
+                    continue;
+                }
+            }
+
+        // if pipe or string terminator
         if (strcmp((*wordArr)[index],"|") == 0 ||
-            strcmp((*wordArr)[index],"then") == 0 ||
-            strcmp((*wordArr)[index],"else") == 0 ||
             (strcmp((*wordArr)[index],"\0") == 0)
             )
         // end curr command execute it, and wipe the cmd to start over
@@ -165,6 +189,7 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
             if(strcmp((*wordArr)[index],"\0") == 0 && cmd->length == 0) {
                 //printf("command length with null term:%i\n", cmd->length);
                 free((*wordArr)[index]);
+                (*wordArr)[index] = NULL;
                 continue;
             }
             // check if current command is a pipe
@@ -172,6 +197,7 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
                 if (cmd->length == 0) {
                     // printf("Invalid pipe location.\n");
                     free((*wordArr)[index]);
+                    (*wordArr)[index] = NULL;
                     //freeWords(cmd);
                     continue;
                 }
@@ -179,6 +205,8 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
                 cmd->pipeIn = 1;
             }
 
+            // set the last index
+            cmd->lastWordsIndex = index;
             // runs the command
             int runCmdRetCode = runCommand(cmd);
             // exiting either user request(0) or on error (-1)
@@ -195,17 +223,10 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
                 cmd->pipeOut = 1; // next command is taking from a pipe
             }
 
-            // setup the next command as a command that should check the exit status of the current command that just ran
-            if (strcmp((*wordArr)[index],"then") == 0) {
-                cmd->type=2;
-            }
-            if (strcmp((*wordArr)[index],"else") == 0) {
-                cmd->type=3;
-            }
-
             // free the special word
             printf("  special word:'%s'\n",(*wordArr)[index]);
             free((*wordArr)[index]);
+            (*wordArr)[index] = NULL;
 
         } else 
         // check if redirection
@@ -273,7 +294,9 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
                         printf("Unable open file \'%s\' for input redirection.\n",(*wordArr)[index]);
                     }
                     free((*wordArr)[index-1]);
+                    (*wordArr)[index-1]=NULL;
                     free((*wordArr)[index]);
+                    (*wordArr)[index] = NULL;
 
                     continue;
                     
@@ -283,7 +306,9 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
             }
             // free the words not being added to cmd array
             free((*wordArr)[index-1]);
+            (*wordArr)[index-1] = NULL;
             free((*wordArr)[index]);
+            (*wordArr)[index] = NULL;
         }
         else {        
             // normal word
@@ -319,6 +344,10 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
         // blank line at EOF
         //printf("command length with null term:%i\n", cmd->length);    
     } else {
+        
+        // set the last index, leaving as -1 because its the end of file
+        cmd->lastWordsIndex = -1;
+
         int runCmdRetCode = runCommand(cmd);
         // exiting either user request(0) or on error (-1)
         if(runCmdRetCode != 1) {

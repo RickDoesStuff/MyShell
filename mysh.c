@@ -80,7 +80,7 @@ int runningMode(int interactive) {
 
     int isRunning = 1;        
 
-    while ((interactive && isRunning) || (!interactive && !feof(stdin))) 
+    while (isRunning) 
     {
 
         // maybe move these inside of terminal Stream?? idea?
@@ -112,23 +112,46 @@ int runningMode(int interactive) {
             close(cmd.redirectOut);
             cmd.redirectOut = -1;
         }
-        
+
         // check if error
         if(linestreamReturnCode == -1) {
-            printf("Terminal Stream Error\n");
+            printf("linestream Error\n");
 
             free(wordArr);
             exit(EXIT_FAILURE);
         }
         // check if user wants to exit
         else if(linestreamReturnCode == 0) {
-            //printf("calling free at exit;2\n");
-            //freeArr(&wordArr, &wordCount);
+            printf("going to free up to %i words\n", wordCount);
+            if (cmd.lastWordsIndex > -1) {
+                for (int i = cmd.lastWordsIndex ; i < wordCount ; i++){
+
+                    if (wordArr[i] != NULL) {
+                        printf("in main freeing: %s\n",wordArr[i]);
+                        free(wordArr[i]);
+                        wordArr[i] = NULL;
+                    }
+                }
+            }
             free(wordArr);
             isRunning = 0;
             continue;
         }
-        // terminalStream was sucessfull
+        // linestream interactive was sucessfull
+
+
+        printf("going to free up to %i words starting at %i\n", wordCount, cmd.lastWordsIndex);
+
+        if (cmd.lastWordsIndex > -1) {
+            for (int i = cmd.lastWordsIndex; i < wordCount ; i++){
+
+                if (wordArr[i] != NULL) {
+                    printf("in main freeing: %s\n",wordArr[i]);
+                    free(wordArr[i]);
+                    wordArr[i] = NULL;
+                }
+            }
+        }
         free(wordArr);
 
         // batch file read, exiting

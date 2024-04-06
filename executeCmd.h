@@ -23,6 +23,8 @@ typedef struct command{
     int size; // how many words allocated 
     int length; // how many words in command
     int exitStatus; // exit status of previous command
+    
+    int lastWordsIndex; // the index of the last word in the command in the original wordArr 
     char **words; // an array of words
 } command;
 
