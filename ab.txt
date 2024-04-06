@@ -1,0 +1,7 @@
+*.txt
+a.txt
+aa.txt
+ab.txt
+b.txt
+c.txt
+ab.txt file contents
