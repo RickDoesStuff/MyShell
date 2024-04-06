@@ -160,15 +160,21 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
             )
         // end curr command execute it, and wipe the cmd to start over
         {
+            printf("index is %i || cmd->length is %i\n",index, cmd->length);
 
             if(strcmp((*wordArr)[index],"\0") == 0 && cmd->length == 0) {
-                printf("command length with null term:%i\n", cmd->length);
+                //printf("command length with null term:%i\n", cmd->length);
                 free((*wordArr)[index]);
                 continue;
             }
-
             // check if current command is a pipe
             if (strcmp((*wordArr)[index],"|") == 0) {
+                if (cmd->length == 0) {
+                    // printf("Invalid pipe location.\n");
+                    free((*wordArr)[index]);
+                    //freeWords(cmd);
+                    continue;
+                }
                 cmd->type=1; // start of a pipe / passing into a pipe
                 cmd->pipeIn = 1;
             }
@@ -198,7 +204,7 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
             }
 
             // free the special word
-            printf("\nfreeing special word:'%s'\n",(*wordArr)[index]);
+            printf("  special word:'%s'\n",(*wordArr)[index]);
             free((*wordArr)[index]);
 
         } else 
@@ -208,16 +214,51 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
         {
             index++; // index is now currently the file name
              
-            if ((*wordArr)[index] == NULL) {
+            if ((*wordArr)[index] == NULL || 
+                strcmp((*wordArr)[index],"then") == 0 ||
+                strcmp((*wordArr)[index],"else") == 0 ||
+                strcmp((*wordArr)[index],"|") == 0 ||
+                strcmp((*wordArr)[index],"<") == 0 ||
+                strcmp((*wordArr)[index],">") == 0) 
+            {
                 printf("redirection error, no file specified.\n");
-                return 1;
+                
+                 printf("here1\n");
+                //freeWords(cmd);
+                index--;
+                free((*wordArr)[index]);
+                (*wordArr)[index] = NULL;
+                printf("here\n");
+                // if ((*wordArr)[index] != NULL) {
+                //     free((*wordArr)[index]);
+                //     (*wordArr)[index] = NULL;
+                // }
+                //mallocWords(cmd);
+                if (interactive){
+                    // return 1;
+                    continue;
+                } else {
+                    continue;
+                }
             }
             // output redirection
             int fd = -1;
             if (strcmp((*wordArr)[index-1],">") == 0) {
                 if ((fd = open((*wordArr)[index], O_CREAT | O_TRUNC | O_WRONLY, 0640)) == -1){
-                    printf("Unable open file \'%s\' for output redirection.\n",(*wordArr)[index]);
-                    return 1;
+                    if (strlen((*wordArr)[index]) == 0){
+                        printf("Output redirection error, no file specified.\n");
+                    } else{
+                        printf("Unable open file \'%s\' for output redirection.\n",(*wordArr)[index]);
+                    }
+                    free((*wordArr)[index]);
+                    (*wordArr)[index] = NULL;
+                    printf("here1\n");
+                    //freeWords(cmd);
+                    free((*wordArr)[index-1]);
+                    (*wordArr)[index-1] = NULL;
+                    printf("here\n");
+
+                    continue;
                 }
                 printf("redirecting output to \'%s\' : fd:%i.\n",(*wordArr)[index], fd);
                 cmd->redirectOut = fd;
@@ -225,8 +266,17 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
             // input redirection
             if (strcmp((*wordArr)[index-1],"<") == 0) {
                 if ((fd = open((*wordArr)[index], O_RDONLY)) == -1){
-                    printf("Unable open file \'%s\' for input redirection.\n",(*wordArr)[index]);
-                    return 1;
+
+                    if (strlen((*wordArr)[index]) == 0){
+                        printf("Input redirection error, no file specified.\n");
+                    } else{
+                        printf("Unable open file \'%s\' for input redirection.\n",(*wordArr)[index]);
+                    }
+                    free((*wordArr)[index-1]);
+                    free((*wordArr)[index]);
+
+                    continue;
+                    
                 }
                 printf("redirecting input to \'%s\' : fd:%i.\n",(*wordArr)[index], fd);
                 cmd->redirectIn = fd;
@@ -262,14 +312,23 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
     }
     
 
-    // runs the command
-    int runCmdRetCode = runCommand(cmd);
-    // exiting either user request(0) or on error (-1)
-    if(runCmdRetCode != 1) {
-        return runCmdRetCode;
+    // runs the command    
+    //printf("command length with null term:%i\n", cmd->length);    
+
+    if(cmd->length == 0) {
+        // blank line at EOF
+        //printf("command length with null term:%i\n", cmd->length);    
+    } else {
+        int runCmdRetCode = runCommand(cmd);
+        // exiting either user request(0) or on error (-1)
+        if(runCmdRetCode != 1) {
+            return runCmdRetCode;
+        }
     }
     // free the words
     freeWords(cmd);
+    printf("\n");
+    
     cmd->type=0;
     //printf("***line ended***\n");
 
@@ -482,44 +541,47 @@ int readWordsIntoArray(char ***arr, int *wordCount, int interactive) {
                 //printf("**returning readWordsIntoArray\n");
                 //(*arr)[currentWord][wordLen] = '\0'; // Null-terminate
                     
-                    // maybe realloc the size of the arr if we run out of index's to use
-                    //(*arr)[currentWord] = NULL;    // put NULL as the last index in the 2d array
+                // maybe realloc the size of the arr if we run out of index's to use
+                //(*arr)[currentWord] = NULL;    // put NULL as the last index in the 2d array
+                if(wordLen == 0) {
+                    *wordCount = currentWord;
+                } else {
                     *wordCount = currentWord+1;
+                }
+                //printf("wordCount:%i\n",*wordCount);
 
-                    //printf("wordCount:%i\n",*wordCount);
+                free(buf);
 
-                    free(buf);
+                // free the end of the array, basically incase there is anything after the stuff we actually need, 
+                // such as random byte data
+                if ((*arr)==NULL || arr==NULL)
+                {
+                    printf("arr error\n");
+                    return -1;
+                }
+                // free all excess words if needed
+                for (int freeI = *wordCount; freeI<allocatedWordAmt; freeI++)
+                {
+                    if ((*arr)[freeI] == NULL) {continue;}
+                    free((*arr)[freeI]);
+                    (*arr)[freeI] = NULL;
+                }
 
-                    // free the end of the array, basically incase there is anything after the stuff we actually need, 
-                    // such as random byte data
-                    if ((*arr)==NULL || arr==NULL)
-                    {
-                        printf("arr error\n");
-                        return -1;
-                    }
-                    // free all excess words if needed
-                    for (int freeI = *wordCount; freeI<allocatedWordAmt; freeI++)
-                    {
-                        if ((*arr)[freeI] == NULL) {continue;}
-                        free((*arr)[freeI]);
-                        (*arr)[freeI] = NULL;
-                    }
-
-                    printf("All words:\n");
-                    for (int x = 0 ; (*arr)[x]; x++) {
-                        for (int y = 0; (*arr)[x][y]; y++){
-                            if ((*arr)[x][y] == '\n'){
-                                printf("newline\n");
-                            } else {
-                                printf("'%c'",(*arr)[x][y]);
-                            }
+                printf("All words:\n");
+                for (int x = 0 ; (*arr)[x]; x++) {
+                    for (int y = 0; (*arr)[x][y]; y++){
+                        if ((*arr)[x][y] == '\n'){
+                            printf("newline\n");
+                        } else {
+                            printf("'%c'",(*arr)[x][y]);
                         }
-                        printf("\n");
                     }
-                    printf("**printed all words\n");
+                    printf("\n");
+                }
+                printf("**printed all words\n");
 
-                    //printf("freed end of wordArr\n");
-                    return 1; // return with success
+                //printf("freed end of wordArr\n");
+                return 1; // return with success
             }
             free(buf);
             return 0;

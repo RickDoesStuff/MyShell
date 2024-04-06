@@ -100,6 +100,19 @@ int runningMode(int interactive) {
         command cmd;
         int linestreamReturnCode = linestream(&wordArr, &wordCount, &cmd, interactive);
         
+
+        printf("redIn:%i    redOut:%i\n",cmd.redirectIn,cmd.redirectOut);
+        if (cmd.redirectIn != -1)
+        {
+            close(cmd.redirectIn);
+            cmd.redirectIn = -1;
+        }
+        if (cmd.redirectOut != -1)
+        {
+            close(cmd.redirectOut);
+            cmd.redirectOut = -1;
+        }
+        
         // check if error
         if(linestreamReturnCode == -1) {
             printf("Terminal Stream Error\n");
