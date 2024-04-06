@@ -38,10 +38,10 @@ int main(int argc, char **argv) {
     } else {
         // No path given, check if stdin is a terminal or being piped
         if (isatty(STDIN_FILENO)) {
-            printf("Is a terminal\n");
+            DEBUG printf("Is a terminal\n");
             interactive = 1;
         } else {
-            printf("Not a terminal\n");
+            DEBUG printf("Not a terminal\n");
             interactive = 0;
         }
         DEBUG printf("Running in interactive mode, no path given\n");
