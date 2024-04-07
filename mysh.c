@@ -104,11 +104,13 @@ int runningMode(int interactive) {
         //printf("redIn:%i    redOut:%i\n",cmd.redirectIn,cmd.redirectOut);
         if (cmd.redirectIn != -1)
         {
+            //printf("redirect in close\n");
             close(cmd.redirectIn);
             cmd.redirectIn = -1;
         }
         if (cmd.redirectOut != -1)
         {
+            //printf("redirect out close\n");
             close(cmd.redirectOut);
             cmd.redirectOut = -1;
         }

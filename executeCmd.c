@@ -67,6 +67,8 @@ int check_command(command *cmd) {
     // where I need to handle the * wildcard
     wildcardExpansion(cmd);
 
+
+
     // Exit command
     if (strcmp(cmd->words[0],"exit") == 0) {
         if (cmd->length > 1){
@@ -76,6 +78,20 @@ int check_command(command *cmd) {
             printf("\n");
         }
         return 0;
+    }        
+    // CD command
+    else if (strcmp(cmd->words[0], "cd") == 0) {
+        if (cmd->words[1] == NULL) {
+            printf("No directory given\n");
+            return 1;
+        } else {
+            if (chdir(cmd->words[1]) != 0) {
+                perror("cd failed");
+                return -1;
+            }
+        }
+        // successfully changed directories
+        return 1;
     }
 
     // try to execute it now with built in commands and execv commands
@@ -178,20 +194,6 @@ int execute_command(command *cmd) {
                 perror("pwd failed");
                 exit(EXIT_FAILURE);
             }
-            exit(EXIT_SUCCESS);
-        }
-        // CD command
-        else if (strcmp(cmd->words[0], "cd") == 0) {
-            if (cmd->words[1] == NULL) {
-                printf("No directory given\n");
-                exit(EXIT_SUCCESS);
-            } else {
-                if (chdir(cmd->words[1]) != 0) {
-                    perror("cd failed");
-                    exit(EXIT_FAILURE);
-                }
-            }
-            // successfully changed directories
             exit(EXIT_SUCCESS);
         }
         // which command

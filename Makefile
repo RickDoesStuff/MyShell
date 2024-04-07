@@ -42,8 +42,6 @@ clean:
 	rm -f $(OBJECTS_MYSH)
 
 # Dependencies
-#filestream.o: filestream.c filestream.h
 linestream.o: linestream.c linestream.h
 executeCmd.o: executeCmd.c executeCmd.h
-# terminalstream.o: terminalstream.c terminalstream.h
 mysh.o: mysh.c mysh.h # Add this line if mysh.h exists and is used
