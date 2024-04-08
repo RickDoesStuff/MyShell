@@ -164,7 +164,7 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
                     free((*wordArr)[index]);
                     (*wordArr)[index] = NULL;
                     continue;
-                }
+                } else
                 // setup the next command as a command that should check the exit status of the current command that just ran
                 if (strcmp((*wordArr)[index],"else") == 0) {
                     //printf("cmd length else:%i\n",cmd->length);
@@ -175,6 +175,10 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
                     free((*wordArr)[index]);
                     (*wordArr)[index] = NULL;
                     continue;
+                }
+                else {
+                    // not a then or else
+                    cmd->type = 0;
                 }
             }
 
