@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
         }
 
         // Set the application to run in batch mode
-        printf("Running in batch mode\n");
+        // printf("Running in batch mode\n\n");
         interactive = 0;
 
         // Since we've redirected stdin, there's no need to check if it's a tty

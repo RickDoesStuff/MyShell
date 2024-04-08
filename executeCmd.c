@@ -304,7 +304,7 @@ int execute_command(command *cmd) {
         int exit_status = WEXITSTATUS(status);        
         //printf("Exit status of the child was %d\n", exit_status);
                                      
-        cmd->exitStatus=exit_status;
+        cmd->exitStatus = exit_status;
     } else
     if (!WIFEXITED(status) && WEXITSTATUS(status) != 0){
         perror("error with child process:");

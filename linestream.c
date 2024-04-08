@@ -78,12 +78,22 @@ int resetCommand(command *cmd) {
  */
 int runCommand(command *cmd) {
 
-    // then || else
-    if ((cmd->type==2 && cmd->exitStatus == 1) || (cmd->type==3 && cmd->exitStatus == 0)) {
+    //printf("command type:%i   exit status:%i\n",cmd->type,cmd->exitStatus);
+    
+    // then && exited with success || else
+    if ((cmd->type == 2 && cmd->exitStatus == 1) || (cmd->type == 3 && cmd->exitStatus == 0)) {
         // dont execute
         // false then
         // or
         // true else
+
+        // reset command type after the command if it was an else or then
+        if (cmd->type == 2 || cmd->type == 3) {
+            //printf("setting cmd type %i to 0\n",cmd->type);
+            cmd->type = 0;
+        }
+
+
         return 1;
     }
     // get the return code from check_command
@@ -105,7 +115,8 @@ int runCommand(command *cmd) {
     }
 
     // reset command type after the command if it was an else or then
-    if (cmd->type==2 || cmd->type == 3) {
+    if (cmd->type == 2 || cmd->type == 3) {
+        //printf("setting cmd type %i to 0\n",cmd->type);
         cmd->type = 0;
     }
 
@@ -164,7 +175,7 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
                 // setup the next command as a command that should check the exit status of the current command that just ran
                 if (strcmp((*wordArr)[index],"then") == 0) {
                     //printf("cmd length then:%i\n",cmd->length);
-                    cmd->type=2;
+                    cmd->type = 2;
                     // free the special word
                     //printf("  special word:'%s'\n",(*wordArr)[index]);
                     free((*wordArr)[index]);
@@ -174,10 +185,10 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
                 // setup the next command as a command that should check the exit status of the current command that just ran
                 if (strcmp((*wordArr)[index],"else") == 0) {
                     //printf("cmd length else:%i\n",cmd->length);
-                    cmd->type=3;
+                    cmd->type = 3;
 
                     // free the special word
-                    //printf("  special word:'%s'\n",(*wordArr)[index]);
+                     // printf("  special word:'%s'\n",(*wordArr)[index]);
                     free((*wordArr)[index]);
                     (*wordArr)[index] = NULL;
                     continue;
@@ -355,7 +366,7 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
     freeWords(cmd);
     //printf("\n");
     
-    cmd->type=0;
+    cmd->type = 0;
     //printf("***line ended***\n");
 
 
