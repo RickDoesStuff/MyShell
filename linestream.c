@@ -103,6 +103,12 @@ int runCommand(command *cmd) {
         freeWords(cmd);
         return -1;
     }
+
+    // reset command type after the command if it was an else or then
+    if (cmd->type==2 || cmd->type == 3) {
+        cmd->type = 0;
+    }
+
     // execute_command functioned as expected, get next user input
     // doesn't free or reset here, do that in other functions!
     return 1;
@@ -175,10 +181,6 @@ int linestream(char ***wordArr, int *wordCount, command *cmd, int interactive) {
                     free((*wordArr)[index]);
                     (*wordArr)[index] = NULL;
                     continue;
-                }
-                else {
-                    // not a then or else
-                    cmd->type = 0;
                 }
             }
 

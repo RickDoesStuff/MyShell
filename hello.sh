@@ -1,5 +1,4 @@
-echo hello
-then echo should run
-else exit shouldnt be exiting
-echo helloo everyone
-echo I am at the end
+echo hello world
+then echo this should run
+else exit whoops
+then echo this should also run

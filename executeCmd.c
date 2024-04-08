@@ -83,11 +83,9 @@ int check_command(command *cmd) {
     else if (strcmp(cmd->words[0], "cd") == 0) {
         if (cmd->words[1] == NULL) {
             printf("No directory given\n");
-            return 1;
         } else {
             if (chdir(cmd->words[1]) != 0) {
                 perror("cd failed");
-                return -1;
             }
         }
         // successfully changed directories
@@ -292,6 +290,7 @@ int execute_command(command *cmd) {
         close(cmd->redirectOut); // close when done with it
         cmd->redirectOut = -1; // reset the value
     }
+
 
     // status is set to 1 on failure and 0 on success
     if (waitpid(childpid, &status, 0) == -1) {
